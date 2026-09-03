@@ -286,7 +286,16 @@ function FilterButton({
   );
 }
 
-export function DiningDayView({ day, fetchedAt }: { day: DiningDay; fetchedAt?: string }) {
+export function DiningDayView({
+  day,
+  fetchedAt,
+  fromFallback = false,
+}: {
+  day: DiningDay;
+  fetchedAt?: string;
+  /** True when UCLA Dining failed and a previous menu is standing in. */
+  fromFallback?: boolean;
+}) {
   const [venueId, setVenueId] = useState<string>('all');
   const [period, setPeriod] = useState<MealPeriod | 'all'>('all');
 
@@ -297,6 +306,9 @@ export function DiningDayView({ day, fetchedAt }: { day: DiningDay; fetchedAt?: 
     getCampusDaySnapshot,
     getCampusDayServerSnapshot,
   );
+  // Two different kinds of "not current", kept distinct because they call for
+  // different reactions: the menu is for another day, versus the publisher was
+  // unreachable and this is the last menu we managed to retrieve.
   const isStale = today !== '' && today !== day.date;
 
   const periods = useMemo(() => {
@@ -315,6 +327,21 @@ export function DiningDayView({ day, fetchedAt }: { day: DiningDay; fetchedAt?: 
 
   return (
     <div>
+      {fromFallback ? (
+        <div
+          role="status"
+          className="mb-5 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <p>
+            <strong className="font-semibold">UCLA Dining was unreachable.</strong> This is the most
+            recent menu that retrieved successfully
+            {fetchedAt ? <> — from {formatDate(fetchedAt)}</> : null}. It is shown rather than
+            nothing, but check the official menu before relying on it.
+          </p>
+        </div>
+      ) : null}
+
       {isStale ? (
         <div
           role="status"

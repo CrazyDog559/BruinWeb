@@ -82,8 +82,19 @@ export interface SourceResult {
   sourceId: string;
   status: SourceStatus;
   items: MediaItem[];
-  /** ISO-8601 UTC timestamp of the retrieval attempt. */
+  /**
+   * When the data being shown was actually retrieved from the publisher.
+   * Deliberately not "when this build ran": if a source failed and a previous
+   * dataset is standing in, this is the older, truthful timestamp, so the UI
+   * ages the content rather than the build.
+   */
   fetchedAt: string;
+  /** When this build attempted the source, successful or not. */
+  attemptedAt?: string;
+  /** True when the live attempt failed and a persisted dataset is standing in. */
+  fromFallback?: boolean;
+  /** How long the attempt took, in milliseconds. */
+  durationMs?: number;
   /** Human-readable failure reason. Never contains credentials. */
   error?: string;
   /** Operator-facing note, e.g. "awaiting PANOPTO_API_KEY". */

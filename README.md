@@ -20,6 +20,8 @@ no serverless function and no authentication. Search and filtering run in the br
 content already on the page.
 
 - 11 channels, 9 of them fetching live data at build time
+- Content refreshes automatically — a scheduled rebuild plus in-browser live refresh, no code push required
+- A public [source-status page](https://bruinweb.vercel.app/status/) showing what is live, stale or unavailable
 - A dining view that leads with each hall's **main courses** for the current meal
 - A **public lectures** browser: 171 talks from six verified UCLA centres and institutes
 - One normalized `MediaItem` type shared across every integration
@@ -163,11 +165,12 @@ Full research notes, including everything that was tried and rejected, are in
   metadata and links are stored: audio and video stay on each publisher's own host and are never
   copied, rehosted or re-encoded. Playback is embedded only where a publisher officially supports it;
   today no source does, so every talk links out.
-- **Datacenter blocking (affects Daily Bruin on the hosted build).** The Daily Bruin refuses requests
-  from cloud datacenter networks — `403` on its REST API, its RSS feed *and* its public site. Vercel
-  builds run in such a network, so on https://bruinweb.vercel.app the Daily Bruin section shows its
-  "could not reach this source" state, while a build run from an ordinary network fetches it
-  normally. The adapter tries all three public surfaces in turn; BruinWeb identifies itself honestly
+- **Datacenter blocking (Daily Bruin).** The Daily Bruin refuses requests from cloud datacenter
+  networks — `403` on its REST API, its RSS feed *and* its public site — so a Vercel build cannot
+  retrieve it. This is now solved from the other direction: the section refreshes in the reader's
+  own browser, which is not a datacenter and which the publisher's API answers with CORS headers.
+  The built page may therefore be empty on a cold cache until a reader presses "Check for new";
+  once any build succeeds, the persisted artifact keeps the section populated. The adapter tries all three public surfaces in turn; BruinWeb identifies itself honestly
   in its `User-Agent` at every step and does not disguise requests as a browser to get around the
   block. Two legitimate ways to include the section in a hosted build:
 
@@ -248,6 +251,80 @@ To add one:
 5. Set `embedAllowed` only where the publisher officially supports embedding. Everything else is
    linked, never reframed.
 6. Confirm every resulting URL loads publicly without signing in.
+
+### How content stays current
+
+BruinWeb has no backend, so "current" comes from three mechanisms rather than a
+server rendering on request. Which one a section uses is declared in the source
+registry (`src/lib/config/sources.ts`, field `refresh`), not decided in a component.
+
+**1. Live in the reader's browser.** Where a publisher's public API sends CORS headers
+and needs no credential, the page can refetch it directly with a "Check for new" button.
+This is the only mechanism that is fresh *between* builds, and for the Daily Bruin it is
+the only one that works at all — that publisher refuses cloud datacenter networks, but a
+reader's browser is not one. Verified CORS-enabled on 2026-09-03:
+
+| Source | Browser endpoint |
+| --- | --- |
+| Daily Bruin | `wp.dailybruin.com/wp-json/wp/v2/posts` |
+| UCLA Radio | `uclaradio.com/wp-json/wp/v2/posts` |
+| BruinLife | `bruinlife.com/wp-json/wp/v2/posts` |
+| UCLA Communications Board | `uclastudentmedia.com/wp-json/wp/v2/pages` |
+| UCLA Athletics | `api.uclabruins.com/website-api/articles` |
+
+Requests go out with `credentials: 'omit'`, so a reader's cookies for a publisher are
+never attached. The browser and the build share one normalizer
+(`*-normalize.ts` modules, which carry no Node dependency), so a refreshed item cannot be
+shaped differently from a built one.
+
+**2. Scheduled rebuild.** Everything else is retrieved during `next build`, and
+`.github/workflows/refresh.yml` pings a Vercel Deploy Hook on a timetable so that happens
+without anyone pushing code. No commit is created to trigger a deploy.
+
+**3. Fallback.** Each build-time source persists a validated artifact under
+`.next/cache/`, which Vercel restores between deployments. When a publisher is briefly
+unavailable the section shows the last dataset that retrieved successfully, labelled as
+older data and stamped with its true age. With nothing cached, the section says it is
+unavailable — content is never invented to fill a gap.
+
+Every section's live state is visible at [`/status`](https://bruinweb.vercel.app/status/),
+and machine-readably at `/status.json`.
+
+### Scheduled refresh
+
+The refresh cadence is driven by UCLA Dining, the source that changes most often.
+GitHub's cron is UTC-only and has no notion of daylight saving, so the workflow fires
+every 30 minutes year-round and a guard step decides — in `America/Los_Angeles` — whether
+that tick should rebuild:
+
+| Campus time | Cadence | Covers |
+| --- | --- | --- |
+| 06:00–21:59 PT | every 30 min | Dining (30 min), Daily Bruin and Athletics (hourly) |
+| 22:00–05:59 PT | hourly | Daily Bruin and Athletics (hourly) |
+
+That is roughly 40 rebuilds a day from one schedule. **Deviations from the per-source
+targets, and why:**
+
+- Esports (3 h), Comm Board and BruinLife (6 h), Science Journal and Public Lectures
+  (daily) are all refreshed far more often than their targets. Splitting them onto their
+  own schedules would mean more deploys, not fewer — Vercel bills build minutes, and one
+  rebuild refreshes every source at once.
+- UCLA Radio's hourly target is met, but there is no now-playing data to show: UCLA Radio
+  publishes no such API. The hourly figure applies to editorial posts.
+- Panopto is never fetched, by design.
+
+**One-time setup.** The deploy hook is a credential — anyone holding the URL can trigger
+deployments — so it is never committed:
+
+1. In Vercel: **Project → Settings → Git → Deploy Hooks**. Create one named
+   `scheduled-refresh` on branch `main`, and copy the URL.
+2. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**.
+   Name it exactly `VERCEL_DEPLOY_HOOK_URL` and paste the URL as the value.
+3. Optionally run **Actions → Refresh content → Run workflow** to confirm it works.
+
+Until that secret exists the workflow fails loudly with a pointer back here, rather than
+silently pinging nothing. Note that GitHub disables scheduled workflows on repositories
+with no activity for 60 days; a single commit or a manual run re-enables them.
 
 ### Adding another source adapter
 

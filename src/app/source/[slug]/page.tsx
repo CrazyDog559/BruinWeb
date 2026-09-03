@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { BrowseExplorer } from '@/components/filters/BrowseExplorer';
 import { DiningDayView } from '@/components/media/DiningDayView';
 import { LectureTemplate } from '@/components/media/LectureTemplate';
+import { LiveSection } from '@/components/media/LiveSection';
 import { SourceFooterNote, SourceStatus } from '@/components/media/SourceStatus';
 import { Container } from '@/components/layout/Section';
 import { ExternalLink } from '@/components/ui/ExternalLink';
@@ -14,6 +15,7 @@ import {
   getSourceBySlug,
 } from '@/lib/config/sources';
 import { getSnapshot } from '@/lib/data/load';
+import { isLiveSource } from '@/lib/live';
 import { EMPTY_FILTERS } from '@/lib/search';
 
 /** One static page per configured source that does not have a bespoke route. */
@@ -88,10 +90,32 @@ export default async function SourcePage({ params }: { params: Promise<{ slug: s
           <h2 id="dining-today" className="font-display mb-5 text-2xl">
             Dining halls today
           </h2>
-          <DiningDayView day={dining} fetchedAt={result?.fetchedAt} />
+          <DiningDayView
+            day={dining}
+            fetchedAt={result?.fetchedAt}
+            fromFallback={result?.fromFallback ?? false}
+          />
         </section>
       ) : source.id === 'lectures' ? (
         <LectureTemplate items={items} result={result} source={source} showNote={false} />
+      ) : isLiveSource(source.id) ? (
+        /*
+         * Browser-refreshable sources render their built items and offer a
+         * refresh that goes straight to the publisher. This is the only path on
+         * which the Daily Bruin section can carry content on the hosted build,
+         * so it is offered even when the build retrieved nothing.
+         */
+        <LiveSection
+          sourceId={source.id}
+          items={items}
+          builtAt={result?.fetchedAt ?? new Date().toISOString()}
+          publisher={source.name}
+          emptyMessage={
+            result?.error
+              ? `${source.name} could not be retrieved when this page was built. Use “Check for new” above — your browser is not a datacenter, so the publisher may answer it.`
+              : undefined
+          }
+        />
       ) : result?.status === 'ok' && items.length > 0 ? (
         <BrowseExplorer
           items={items}

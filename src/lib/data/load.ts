@@ -6,10 +6,16 @@
  * return rather than throw means one dead source degrades one section, never
  * the build. The result is memoized so a single build fetches each source once
  * no matter how many pages consume it.
+ *
+ * Each build-time source is additionally wrapped in `withFallback`, which
+ * persists a validated artifact on success and replays the last good one when a
+ * publisher is briefly unavailable. A section therefore has three honest states
+ * — current, showing older data with its real age, or unavailable — and never a
+ * fourth one where invented content stands in for a failed fetch.
  */
 
+import { SOURCE_IDS, SOURCES, type SourceId } from '@/lib/config/sources';
 import { FEED } from '@/lib/config/site';
-import { SOURCE_IDS, type SourceId } from '@/lib/config/sources';
 import { dedupeItems, sortByDateDesc } from '@/lib/normalize';
 import type { DiningDay, LectureCollection, MediaItem, SourceResult } from '@/lib/types';
 
@@ -23,6 +29,10 @@ import { loadScienceJournal } from '@/lib/adapters/science-journal';
 import { collectLectures, lecturesAsSourceResult } from '@/lib/adapters/lectures';
 import { loadStudentMediaSources } from '@/lib/adapters/student-media';
 
+import { withFallback } from './artifacts';
+import { DiningDaySchema, LectureCollectionSchema, MediaItemsSchema } from './schemas';
+import { buildIntegrationReport, type IntegrationReport } from './status';
+
 export interface MediaSnapshot {
   /** Deduplicated, newest-first, across every source. */
   items: MediaItem[];
@@ -30,10 +40,16 @@ export interface MediaSnapshot {
   results: Record<SourceId, SourceResult>;
   /** Dining needs richer structure than `MediaItem` can carry. */
   dining: DiningDay | null;
+  /** True when the dining data shown came from a previous build's artifact. */
+  diningFromFallback: boolean;
+  /** When the dining data shown was actually retrieved. */
+  diningRetrievedAt: string | null;
   /** Public UCLA lectures, which carry speaker and series metadata of their own. */
   lectures: LectureCollection;
-  /** When this build ran. Displayed as the site-wide freshness stamp. */
+  /** When this build ran. Distinct from any source's retrieval time. */
   generatedAt: string;
+  /** Per-source health, generated from these very results. */
+  report: IntegrationReport;
 }
 
 function emptyResult(sourceId: string, fetchedAt: string): SourceResult {
@@ -42,6 +58,7 @@ function emptyResult(sourceId: string, fetchedAt: string): SourceResult {
     status: 'error',
     items: [],
     fetchedAt,
+    attemptedAt: fetchedAt,
     error: 'Adapter did not complete',
   };
 }
@@ -64,24 +81,118 @@ const DEDUPE_PRIORITY: SourceId[] = [
   'lectures',
 ];
 
-async function loadAll(now: Date): Promise<MediaSnapshot> {
-  const fetchedAt = now.toISOString();
+/**
+ * Run one source's `SourceResult`s through the artifact layer.
+ *
+ * An adapter reports failure by returning `status: 'error'` rather than
+ * throwing, so failure is converted into a rejection here — that is the signal
+ * `withFallback` needs in order to reach for the previous dataset.
+ */
+async function resolveResults(
+  sourceId: SourceId,
+  attemptedAt: string,
+  run: () => Promise<SourceResult[]>,
+): Promise<SourceResult[]> {
+  const started = Date.now();
 
-  const lectureCollection = await collectLectures(now);
+  const resolved = await withFallback(sourceId, MediaItemsSchema, attemptedAt, async () => {
+    const results = await run();
+    const own = results.find((result) => result.sourceId === sourceId);
+    if (!own) throw new Error(`Adapter returned no result for "${sourceId}"`);
+    if (own.status === 'error') throw new Error(own.error ?? 'Source reported an error');
+    return { payload: own.items, count: own.items.length };
+  });
+
+  const durationMs = Date.now() - started;
+
+  if (!resolved) {
+    return [
+      {
+        ...emptyResult(sourceId, attemptedAt),
+        durationMs,
+        error: 'Source unavailable and no previous dataset is cached',
+      },
+    ];
+  }
+
+  return [
+    {
+      sourceId,
+      status: resolved.payload.length > 0 ? 'ok' : 'empty',
+      items: resolved.payload,
+      fetchedAt: resolved.retrievedAt,
+      attemptedAt,
+      fromFallback: resolved.fromFallback,
+      durationMs,
+      note: resolved.fromFallback
+        ? 'Showing the most recent dataset that retrieved successfully; the source did not respond during this build.'
+        : undefined,
+    },
+  ];
+}
+
+/**
+ * Sources whose adapter emits several `SourceResult`s at once (the shared
+ * WordPress loader) are unwrapped first, then each is persisted on its own so
+ * one publisher's outage cannot discard its siblings' data.
+ */
+async function resolveMulti(
+  ids: SourceId[],
+  attemptedAt: string,
+  run: () => Promise<SourceResult[]>,
+): Promise<SourceResult[]> {
+  let shared: Promise<SourceResult[]> | null = null;
+  const once = () => (shared ??= run());
+
+  const settled = await Promise.all(
+    ids.map((id) => resolveResults(id, attemptedAt, async () => once())),
+  );
+  return settled.flat();
+}
+
+async function loadAll(now: Date): Promise<MediaSnapshot> {
+  const generatedAt = now.toISOString();
+
+  const diningStarted = Date.now();
+  const diningResolved = await withFallback('dining', DiningDaySchema, generatedAt, async () => {
+    const outcome = await loadDining(now);
+    if (outcome.status === 'error' || !outcome.day) {
+      throw new Error(outcome.error ?? 'Dining reported an error');
+    }
+    return { payload: outcome.day, count: outcome.day.venues.length };
+  });
+  const diningDurationMs = Date.now() - diningStarted;
+
+  const lectureStarted = Date.now();
+  const lecturesResolved = await withFallback(
+    'public-lectures',
+    LectureCollectionSchema,
+    generatedAt,
+    async () => {
+      const collection = await collectLectures(now);
+      if (collection.lectures.length === 0) {
+        throw new Error('No lecture feed returned any talks');
+      }
+      return { payload: collection, count: collection.lectures.length };
+    },
+  );
+  const lectureDurationMs = Date.now() - lectureStarted;
+
+  const lectureCollection: LectureCollection = lecturesResolved?.payload ?? {
+    lectures: [],
+    sources: [],
+    generatedAt,
+  };
 
   const settled = await Promise.allSettled([
-    loadDining(now),
-    loadStudentMediaSources(),
-    loadCommBoard(),
-    loadScienceJournal(undefined, now),
-    loadEsports(),
-    loadAthletics(now),
-    loadEvents(now),
-    loadLectures('lectures', undefined, now),
+    resolveMulti(['daily-bruin', 'ucla-radio', 'bruinlife'], generatedAt, loadStudentMediaSources),
+    resolveResults('comm-board', generatedAt, async () => [await loadCommBoard()]),
+    resolveResults('esports', generatedAt, async () => [await loadEsports()]),
+    resolveResults('athletics', generatedAt, async () => [await loadAthletics(now)]),
+    resolveResults('events', generatedAt, async () => [await loadEvents(now)]),
   ]);
 
-  const collected: SourceResult[] = [lecturesAsSourceResult(lectureCollection)];
-  let dining: DiningDay | null = null;
+  const collected: SourceResult[] = [];
 
   for (const outcome of settled) {
     if (outcome.status !== 'fulfilled') {
@@ -89,18 +200,54 @@ async function loadAll(now: Date): Promise<MediaSnapshot> {
       console.warn('[bruinweb] adapter rejected:', outcome.reason);
       continue;
     }
-    if (Array.isArray(outcome.value)) {
-      collected.push(...outcome.value);
-    } else {
-      if ('day' in outcome.value) dining = outcome.value.day;
-      collected.push(outcome.value);
-    }
+    collected.push(...outcome.value);
+  }
+
+  // Sources that are intentionally not fetched, or that report a documented
+  // blocker rather than data, bypass the artifact layer entirely — there is
+  // nothing to persist and nothing to fall back to.
+  collected.push(await loadScienceJournal(undefined, now));
+  collected.push(await loadLectures('lectures', undefined, now));
+
+  collected.push({
+    ...lecturesAsSourceResult(lectureCollection),
+    fetchedAt: lecturesResolved?.retrievedAt ?? generatedAt,
+    attemptedAt: generatedAt,
+    fromFallback: lecturesResolved?.fromFallback ?? false,
+    durationMs: lectureDurationMs,
+  });
+
+  const diningDay: DiningDay | null = diningResolved ? diningResolved.payload : null;
+
+  if (diningDay) {
+    const dishes = diningDay.venues.reduce(
+      (total, venue) => total + venue.menus.reduce((sum, section) => sum + section.items.length, 0),
+      0,
+    );
+    collected.push({
+      sourceId: 'dining',
+      status: dishes > 0 ? 'ok' : 'empty',
+      items: [],
+      fetchedAt: diningResolved!.retrievedAt,
+      attemptedAt: generatedAt,
+      fromFallback: diningResolved!.fromFallback,
+      durationMs: diningDurationMs,
+      note: diningResolved!.fromFallback
+        ? 'Showing the most recent menu that retrieved successfully; UCLA Dining did not respond during this build.'
+        : undefined,
+    });
+  } else {
+    collected.push({
+      ...emptyResult('dining', generatedAt),
+      durationMs: diningDurationMs,
+      error: 'UCLA Dining did not respond and no previous menu is cached',
+    });
   }
 
   const results = Object.fromEntries(
     SOURCE_IDS.map((id) => [
       id,
-      collected.find((result) => result.sourceId === id) ?? emptyResult(id, fetchedAt),
+      collected.find((result) => result.sourceId === id) ?? emptyResult(id, generatedAt),
     ]),
   ) as Record<SourceId, SourceResult>;
 
@@ -109,12 +256,62 @@ async function loadAll(now: Date): Promise<MediaSnapshot> {
 
   for (const id of SOURCE_IDS) {
     const result = results[id];
-    if (result.status === 'error') {
+    if (result.status === 'error' && SOURCES[id].refresh.strategy !== 'none') {
       console.warn(`[bruinweb] source "${id}" failed: ${result.error ?? 'unknown error'}`);
     }
   }
 
-  return { items, results, dining, lectures: lectureCollection, generatedAt: fetchedAt };
+  const report = buildIntegrationReport(results, generatedAt, {
+    // Dining carries no `MediaItem`s, and lectures are counted from the richer
+    // collection, so both report the number a reader would actually recognise.
+    dining: diningDay
+      ? diningDay.venues.reduce(
+          (total, venue) =>
+            total + venue.menus.reduce((sum, section) => sum + section.items.length, 0),
+          0,
+        )
+      : 0,
+    'public-lectures': lectureCollection.lectures.length,
+  });
+
+  await writeStatusReport(report);
+
+  return {
+    items,
+    results,
+    dining: diningDay,
+    diningFromFallback: diningResolved?.fromFallback ?? false,
+    diningRetrievedAt: diningResolved?.retrievedAt ?? null,
+    lectures: lectureCollection,
+    generatedAt,
+    report,
+  };
+}
+
+/**
+ * Emit the report where the post-build step can find it.
+ *
+ * Written to the project root rather than `public/`, because Next.js copies
+ * `public/` at the start of a build — long before any of this data exists. The
+ * post-build step moves it into `out/`. A failure here is logged and ignored:
+ * losing the report is not a reason to fail a deployment.
+ */
+async function writeStatusReport(report: IntegrationReport): Promise<void> {
+  try {
+    const { writeFile } = await import('node:fs/promises');
+    const path = await import('node:path');
+    await writeFile(
+      path.join(process.cwd(), '.bruinweb-status.json'),
+      JSON.stringify(report, null, 2),
+      'utf8',
+    );
+  } catch (error) {
+    console.warn(
+      `[bruinweb] could not write the integration status report: ${
+        error instanceof Error ? error.message : 'unknown error'
+      }`,
+    );
+  }
 }
 
 let snapshot: Promise<MediaSnapshot> | null = null;

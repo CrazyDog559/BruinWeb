@@ -1,0 +1,169 @@
+# Scheduled content refresh.
+#
+# BruinWeb is a static site: its content is whatever the last build retrieved.
+# Without this workflow the only way to get a new dining menu onto the live site
+# would be to push code, which is both silly and the sort of thing that leads to
+# meaningless "trigger deploy" commits. Instead this pings a Vercel Deploy Hook,
+# which rebuilds the project from the current `main` — no commit, no diff, just
+# a fresh build that refetches every source.
+#
+# Cadence. GitHub's cron is UTC only and has no notion of daylight saving, so
+# the schedule fires every 30 minutes year-round and a guard step decides, in
+# America/Los_Angeles, whether this particular tick should actually rebuild:
+#
+#   * 06:00–21:59 PT  every 30 minutes   (UCLA Dining's target, and the tightest
+#                                         requirement of any source)
+#   * 22:00–05:59 PT  hourly             (nothing needs 30-minute freshness while
+#                                         campus is asleep; this still satisfies
+#                                         the hourly targets for Daily Bruin and
+#                                         Athletics)
+#
+# That is roughly 40 rebuilds a day covering every source's target interval, in
+# place of ten separate schedules. The 3-hourly, 6-hourly and daily sources are
+# satisfied many times over — deliberately, because one shared rebuild is far
+# cheaper than several, and Vercel bills build minutes, not sources.
+#
+# Setting up the secret is documented in README.md under "Scheduled refresh".
+
+name: Refresh content
+
+on:
+  schedule:
+    # Every 30 minutes, all year. The guard below decides which ticks act.
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why you are forcing a refresh (recorded in the run log)'
+        required: false
+        default: 'manual refresh'
+
+# One refresh at a time. A queued run is dropped rather than cancelling the one
+# in flight: cancelling mid-deploy would leave the hook fired and the result
+# unobserved, and the next scheduled tick is only minutes away regardless.
+concurrency:
+  group: bruinweb-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    name: Trigger a rebuild
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Decide whether this tick should rebuild
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # Resolve the wall clock in UCLA's own time zone so the window follows
+          # daylight saving instead of drifting an hour twice a year.
+          HOUR=$(TZ=America/Los_Angeles date +%H)
+          MINUTE=$(TZ=America/Los_Angeles date +%M)
+          PRETTY=$(TZ=America/Los_Angeles date '+%Y-%m-%d %H:%M %Z')
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "Manual run at ${PRETTY}: rebuilding."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 10-digit-safe integer comparison; strip any leading zero.
+          H=$((10#$HOUR))
+          M=$((10#$MINUTE))
+
+          if [ "$H" -ge 6 ] && [ "$H" -lt 22 ]; then
+            echo "Dining hours (${PRETTY}): rebuilding."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$M" -lt 30 ]; then
+            echo "Overnight hourly tick (${PRETTY}): rebuilding."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Overnight half-hour tick (${PRETTY}): skipping to save build minutes."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check the deploy hook is configured
+        if: steps.gate.outputs.run == 'true'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "${HOOK:-}" ]; then
+            echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. See README.md → Scheduled refresh."
+            exit 1
+          fi
+          echo "Deploy hook is configured."
+
+      - name: Ping the Vercel deploy hook
+        if: steps.gate.outputs.run == 'true'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          # --fail-with-body gives a non-zero exit AND the response text, and
+          # nothing here ever echoes $HOOK: the URL is itself the credential.
+          # Output goes to a file so a redirect or error page cannot splash the
+          # hook into the log.
+          STATUS=$(curl --silent --show-error --fail-with-body \
+                        --max-time 30 --retry 2 --retry-delay 5 \
+                        --output /tmp/hook-response.json \
+                        --write-out '%{http_code}' \
+                        -X POST "$HOOK") || {
+            echo "::error::Deploy hook returned HTTP ${STATUS:-000}."
+            # The response body can echo the request URL, so it is not printed.
+            exit 1
+          }
+          echo "Deploy hook accepted the request (HTTP $STATUS)."
+          # The job id is safe to surface and makes the run traceable.
+          python3 -c "
+          import json,sys
+          try:
+              d=json.load(open('/tmp/hook-response.json'))
+              job=(d.get('job') or {})
+              print('Vercel job:', job.get('id','unknown'), 'state:', job.get('state','unknown'))
+          except Exception:
+              print('Vercel accepted the hook but returned no readable job envelope.')
+          "
+
+      - name: Summarise
+        if: always()
+        env:
+          REASON: ${{ github.event.inputs.reason }}
+        run: |
+          {
+            echo "### BruinWeb content refresh"
+            echo ""
+            echo "- Decision: \`${{ steps.gate.outputs.run }}\`"
+            echo "- Trigger: \`${{ github.event_name }}\`"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "- Reason: ${REASON:-manual refresh}"
+            fi
+            echo "- Campus time: $(TZ=America/Los_Angeles date '+%Y-%m-%d %H:%M %Z')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  smoke:
+    name: Production smoke test
+    needs: refresh
+    if: needs.refresh.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Wait for the rebuild to go live
+        # The deploy hook returns as soon as the build is queued, so give Vercel
+        # time to build and promote before asserting anything about the site.
+        run: sleep 150
+
+      - name: Smoke-test the deployed site
+        run: node scripts/smoke.mjs
+        env:
+          BRUINWEB_URL: https://bruinweb.vercel.app

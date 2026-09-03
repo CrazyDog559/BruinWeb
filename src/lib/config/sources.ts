@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import { DAY, HOUR, type RefreshPolicy } from '@/lib/config/refresh';
 import type { DataMode, MediaKind } from '@/lib/types';
 
 export const SOURCE_IDS = [
@@ -90,8 +91,23 @@ export interface SourceConfig {
   route?: string;
   /** Show in the primary navigation. */
   inNav: boolean;
-  /** Turn an integration off without deleting its adapter. */
+  /**
+   * Feature flag. `false` removes the section from navigation and stops its
+   * adapter running, without deleting any code.
+   */
   enabled: boolean;
+  /** How this section gets fresh content without a code change. */
+  refresh: RefreshPolicy;
+  /**
+   * Whether retrieval needs a secret. Every current source is `false`; a `true`
+   * here means the section disables itself when the variable is absent rather
+   * than shipping a key to the browser.
+   */
+  requiresCredentials: boolean;
+  /** Environment variables consulted. Names only — never values. */
+  credentialEnvVars: readonly string[];
+  /** Per-source network policy, overriding the build-wide default. */
+  network: { timeoutMs: number; retries: number };
 }
 
 export const SOURCES: Record<SourceId, SourceConfig> = {
@@ -114,6 +130,16 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#9a5b00', dark: '#ffc72c' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'build',
+      intervalMinutes: 30,
+      staleAfterMinutes: 12 * HOUR,
+      rationale:
+        'No CORS headers and no public API, so the browser cannot read it directly. Rebuilt every 30 minutes during Pacific dining hours; a menu older than half a day is flagged stale.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 20_000, retries: 2 },
   },
   'daily-bruin': {
     id: 'daily-bruin',
@@ -134,6 +160,21 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#005587', dark: '#8bb8e8' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'browser',
+      intervalMinutes: HOUR,
+      staleAfterMinutes: 6 * HOUR,
+      browser: {
+        endpoint: 'https://wp.dailybruin.com/wp-json/wp/v2/posts?per_page=24&_embed=1',
+        corsVerified:
+          'Checked 2026-09-03: responds 200 with access-control-allow-origin reflecting the requesting origin and vary: Origin, so any browser may read it. No credential involved.',
+      },
+      rationale:
+        'The publisher refuses cloud datacenter networks, so the build cannot fetch it — but a reader’s browser is not a datacenter, and the API sends CORS headers. Browser refresh is the only way this section carries real content on the hosted build.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 15_000, retries: 2 },
   },
   'ucla-radio': {
     id: 'ucla-radio',
@@ -154,6 +195,21 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#7a2f8f', dark: '#d9a6e8' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'browser',
+      intervalMinutes: HOUR,
+      staleAfterMinutes: 3 * DAY,
+      browser: {
+        endpoint: 'https://uclaradio.com/wp-json/wp/v2/posts?per_page=24&_embed=1',
+        corsVerified:
+          'Checked 2026-09-03: responds 200 with a reflected access-control-allow-origin. No credential involved.',
+      },
+      rationale:
+        'Editorial posts arrive weekly, so hourly is generous; the browser refresh exists because the API allows it and costs nothing. UCLA Radio publishes no now-playing API, so there is no live track data to show.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 15_000, retries: 2 },
   },
   'comm-board': {
     id: 'comm-board',
@@ -175,6 +231,21 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#0f6b5c', dark: '#6fd8c3' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'browser',
+      intervalMinutes: 6 * HOUR,
+      staleAfterMinutes: 14 * DAY,
+      browser: {
+        endpoint: 'https://uclastudentmedia.com/wp-json/wp/v2/pages?per_page=24',
+        corsVerified:
+          'Checked 2026-09-03: responds 200 with a reflected access-control-allow-origin. No credential involved.',
+      },
+      rationale:
+        'Governance documents change by term, so the generous stale window reflects the source rather than the scheduler.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 15_000, retries: 2 },
   },
   bruinlife: {
     id: 'bruinlife',
@@ -195,6 +266,21 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#b5342b', dark: '#ff9c94' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'browser',
+      intervalMinutes: 6 * HOUR,
+      staleAfterMinutes: 14 * DAY,
+      browser: {
+        endpoint: 'https://bruinlife.com/wp-json/wp/v2/posts?per_page=24&_embed=1',
+        corsVerified:
+          'Checked 2026-09-03: responds 200 with a reflected access-control-allow-origin. No credential involved.',
+      },
+      rationale:
+        'Posts appear a few times a month, so the six-hour target is about the scheduler, not the publisher.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 15_000, retries: 2 },
   },
   'science-journal': {
     id: 'science-journal',
@@ -215,6 +301,16 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#1d5c93', dark: '#8bb8e8' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'build',
+      intervalMinutes: DAY,
+      staleAfterMinutes: 3 * DAY,
+      rationale:
+        'Checked daily so the section notices if the journal ever publishes a machine-readable index. Until then it reports its blocker rather than content.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 15_000, retries: 1 },
   },
   esports: {
     id: 'esports',
@@ -235,6 +331,16 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#6a3fc0', dark: '#c0a8ff' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'build',
+      intervalMinutes: 3 * HOUR,
+      staleAfterMinutes: 90 * DAY,
+      rationale:
+        'The club-sports RSS host sends no CORS headers, so it must be read at build time. Posts appear every few months, hence the long stale window.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 15_000, retries: 2 },
   },
   athletics: {
     id: 'athletics',
@@ -255,6 +361,22 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#0b5ea8', dark: '#8bb8e8' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'browser',
+      intervalMinutes: HOUR,
+      staleAfterMinutes: 12 * HOUR,
+      browser: {
+        endpoint:
+          'https://api.uclabruins.com/website-api/articles?page=1&per_page=24&include=image,categories,sports&sort=-published_at',
+        corsVerified:
+          'Checked 2026-09-03: responds 200 with a reflected access-control-allow-origin. No credential involved.',
+      },
+      rationale:
+        'The busiest source in season. The public website API allows browser reads, so scores and stories can arrive between rebuilds.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 15_000, retries: 2 },
   },
   events: {
     id: 'events',
@@ -275,6 +397,16 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#0f6b5c', dark: '#6fd8c3' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'build',
+      intervalMinutes: 6 * HOUR,
+      staleAfterMinutes: 3 * DAY,
+      rationale:
+        'The payload is embedded in a page rather than served as an API, and the page sends no CORS headers, so it must be read at build time.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 15_000, retries: 2 },
   },
   'public-lectures': {
     id: 'public-lectures',
@@ -297,6 +429,16 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#7a2f8f', dark: '#d9a6e8' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'build',
+      intervalMinutes: DAY,
+      staleAfterMinutes: 14 * DAY,
+      rationale:
+        'Six feeds are aggregated and deduplicated across sources, which is build-time work. Most publish monthly, so a daily rebuild is well ahead of the content.',
+    },
+    requiresCredentials: false,
+    credentialEnvVars: [],
+    network: { timeoutMs: 20_000, retries: 2 },
   },
   lectures: {
     id: 'lectures',
@@ -318,6 +460,16 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     accent: { light: '#8a4b00', dark: '#ffc72c' },
     inNav: true,
     enabled: true,
+    refresh: {
+      strategy: 'none',
+      intervalMinutes: 0,
+      staleAfterMinutes: Number.POSITIVE_INFINITY,
+      rationale:
+        'Never fetched. Panopto needs institution-issued OAuth credentials and returns viewer-scoped content, so there is nothing for an anonymous static site to retrieve. The section is a labelled placeholder until that changes.',
+    },
+    requiresCredentials: true,
+    credentialEnvVars: ['PANOPTO_SITE_HOST', 'PANOPTO_CLIENT_ID', 'PANOPTO_CLIENT_SECRET'],
+    network: { timeoutMs: 15_000, retries: 1 },
   },
 };
 

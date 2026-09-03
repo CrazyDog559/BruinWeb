@@ -4,3 +4,7 @@ node_modules
 .cache
 package-lock.json
 *.md
+
+# Captured upstream responses. These are evidence of what a publisher actually
+# sent, so they are kept byte-faithful rather than reformatted.
+tests/fixtures/

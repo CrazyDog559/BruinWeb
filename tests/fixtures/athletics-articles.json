@@ -1,0 +1,393 @@
+{
+ "data": [
+  {
+   "id": 45996,
+   "type": "default",
+   "title": "Bruins Fall to No. 3 Kentucky, 3-0",
+   "slug": "bruins-fall-to-no-3-kentucky-3-0",
+   "permalink": "https://uclabruins.com/news/2026/09/03/bruins-fall-to-no-3-kentucky-3-0",
+   "image_id": 185761,
+   "image": {
+    "id": 185761,
+    "uuid": "7abd7c29-b5c2-457c-a1b2-a5b62e531e48",
+    "title": "299A3652.jpg",
+    "mime_type": "image/jpeg",
+    "caption": "Kate Duffey (UCLA Athletics)",
+    "description": null,
+    "alt": null,
+    "preview_id": null,
+    "url": "https://uclabruins.com/imgproxy/B2XRkE0exLQ8YRB0lI_Jl2tbB-gWlWF0r8X-tMvrigg/rs:fit:1980:0:0:0/g:ce:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg",
+    "srcset": "https://uclabruins.com/imgproxy/tirsY8Oa-0_zYVPxZukH2gwGU6w7v9m5cVP3TWM7S4o/rs:fit:480:0:0:0/q:80/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg 480w, https://uclabruins.com/imgproxy/jc6wv5oAUcHezpQnxyJ9WNUjk1X45x7jzakqAAxd958/rs:fit:768:0:0:0/q:85/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg 768w, https://uclabruins.com/imgproxy/bS4Vn3B_GAS8f2pVfnf1ivJ88WwlOcpje-zAlCvpLbg/rs:fit:1024:0:0:0/q:85/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg 1024w, https://uclabruins.com/imgproxy/TwJUCuCfuEBJaXfIr_EjbLZ8bK6SzKeQU2iRAbIsEjY/rs:fit:1200:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg 1200w, https://uclabruins.com/imgproxy/KyIQ2XJxn9y9rJlWzKWfsfp93gUfbEY2u2k1kwkdvgI/rs:fit:1600:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg 1600w, https://uclabruins.com/imgproxy/l7PpQjrdx889IO49E8j8SHheXwVzj0nF7esYbUSQp1o/rs:fit:1920:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg 1920w, https://uclabruins.com/imgproxy/8cKibyqIVj8uCDozTA3iNGAs-d1uzn-sroAdzTffJB8/rs:fit:2560:0:0:0/q:95/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg 2560w, https://uclabruins.com/imgproxy/nW_M7Q2sKYvKPdPeVWkNnSIp76rq7T-4-z5N-WttyAE/rs:fit:3840:0:0:0/q:95/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMy9jcG9SZHR2YjR6ZkduUGEycXJsY1NYZzI2aFFseHh4OGlmNTZ6OWVDLmpwZw.jpg 3840w",
+    "sizes": "(min-width: 1920px) 3840px, (min-width: 1440px) 1920px, (min-width: 1024px) 1200px, (min-width: 640px) 1024px, 100vw",
+    "original_name": "299A3652.jpg",
+    "photo_credit": null
+   },
+   "mobile_image_id": null,
+   "image_alignment": "center",
+   "image_credit": null,
+   "image_caption": "Kate Duffey (UCLA Athletics)",
+   "image_description": null,
+   "show_author": false,
+   "video_id": null,
+   "template": "default",
+   "visibility": "public",
+   "order": 0,
+   "short_description": "Bruins suffer their first defeat of the season, falling to No. 3 Kentucky.",
+   "show_ads": true,
+   "meta_title": null,
+   "meta_keywords": null,
+   "meta_description": null,
+   "meta_image_id": null,
+   "published_at": "2026-09-03T00:54:53.000000Z",
+   "schedule_event_id": null,
+   "schedule_event_link": null,
+   "author_id": null,
+   "author_byline": null,
+   "categories": [
+    {
+     "id": 2,
+     "name": "Headlines",
+     "slug": "headlines"
+    },
+    {
+     "id": 20,
+     "name": "Women's Volleyball",
+     "slug": "womens-volleyball"
+    },
+    {
+     "id": 35,
+     "name": "Featured Articles",
+     "slug": "featured-articles"
+    }
+   ],
+   "sports": [
+    {
+     "id": 21,
+     "name": "Women's Volleyball",
+     "schedule_id": 650,
+     "default_roster_id": 352,
+     "abbreviation": "WVB",
+     "gender": null,
+     "slug": "womens-volleyball",
+     "display_ats_vs_on_calendar": true,
+     "hide_from_dropdown": false,
+     "hide_schedule_page_image": false,
+     "hide_roster_page_image": false,
+     "conference_id": 1,
+     "default_home_game_location": null,
+     "display_next_event_on_sports_schedule": true,
+     "default_season_id": 1,
+     "meta_description": null,
+     "meta_image_id": null,
+     "menu_id": 19,
+     "schedule_page_image_id": null,
+     "roster_page_image_id": null,
+     "score_decimal_places": 0,
+     "static_page_id": 16,
+     "hero_presented_by_url": null,
+     "hero_presented_by_logo_id": null,
+     "team_logo_id": null,
+     "icon_id": null,
+     "remove_overall_score_table": false,
+     "calendar_code": null,
+     "presented_by_url": null,
+     "presented_by_logo_id": null,
+     "schedule_top_notes": null,
+     "enable_schedules_countdown": false,
+     "hide_from_schedule_ticker": false,
+     "order": 0
+    }
+   ],
+   "ai_generated": false,
+   "show_in_xml_sitemap": true
+  },
+  {
+   "id": 45995,
+   "type": "video",
+   "title": "UCLA Football Media Availability - Dean Kennedy (Sept. 2, 2026)",
+   "slug": "ucla-football-media-availability-dean-kennedy-sept-2-2026",
+   "permalink": "https://uclabruins.com/news/2026/09/02/ucla-football-media-availability-dean-kennedy-sept-2-2026",
+   "image_id": 185753,
+   "image": {
+    "id": 185753,
+    "uuid": "9566ba48-ef84-4447-b441-6382d5e60e2b",
+    "title": "UCLA Football Media Availability - Dean Kennedy (Sept. 2, 2026)",
+    "mime_type": "image/jpeg",
+    "caption": null,
+    "description": null,
+    "alt": null,
+    "preview_id": null,
+    "url": "https://uclabruins.com/imgproxy/Hlg9w2jlBQk5QfiRNa-lo4ct0Lwm2W8YUmdkOsi-5GI/rs:fit:1980:0:0:0/g:ce:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg",
+    "srcset": "https://uclabruins.com/imgproxy/plJ_xusnHYn1jJhfUoOJbXi1gqn7yTQf1DdsnjcDzZk/rs:fit:480:0:0:0/q:80/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg 480w, https://uclabruins.com/imgproxy/3GCiCZvB4EDVUAM-174zsUU8dRd87FQ__-HdG9r9Szs/rs:fit:768:0:0:0/q:85/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg 768w, https://uclabruins.com/imgproxy/23PR2PutxutXmyG3D-aXJHsaPLIttxnGoXMfDPca7KI/rs:fit:1024:0:0:0/q:85/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg 1024w, https://uclabruins.com/imgproxy/OqepaCJ_ZVmc8euyaPTkrY2zcWqhN7HsSjIcm3AxAi8/rs:fit:1200:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg 1200w, https://uclabruins.com/imgproxy/EtUdAD-cwIA0nRX-fVjOkghJvg9aycPTV_5jEr58U84/rs:fit:1600:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg 1600w, https://uclabruins.com/imgproxy/Ci0bVhU9B42GpDEX_xjEIiLI-AAdSpWHWJ6DbYHp3UY/rs:fit:1920:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg 1920w, https://uclabruins.com/imgproxy/F5S_J2ptX47QzNmplMCNzxuaWwwwvC8P6antAPxL6W4/rs:fit:2560:0:0:0/q:95/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg 2560w, https://uclabruins.com/imgproxy/EuA_iOWkkoR9F6CE8pISNQLmI139Bfn7IrKT8AqGSfw/rs:fit:3840:0:0:0/q:95/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi82ZEgzSGxmdDRsbkpJMXpXVXdaWGF2TEpJc3RsdEZqNUpDSnpISlZKLmpwZw.jpg 3840w",
+    "sizes": "(min-width: 1920px) 3840px, (min-width: 1440px) 1920px, (min-width: 1024px) 1200px, (min-width: 640px) 1024px, 100vw",
+    "original_name": "maxresdefault.jpg",
+    "photo_credit": null
+   },
+   "mobile_image_id": null,
+   "image_alignment": "center",
+   "image_credit": null,
+   "image_caption": null,
+   "image_description": null,
+   "show_author": false,
+   "video_id": 10893,
+   "template": "default",
+   "visibility": "public",
+   "order": 0,
+   "short_description": null,
+   "show_ads": true,
+   "meta_title": null,
+   "meta_keywords": null,
+   "meta_description": null,
+   "meta_image_id": null,
+   "published_at": "2026-09-02T22:36:57.000000Z",
+   "schedule_event_id": null,
+   "schedule_event_link": null,
+   "author_id": null,
+   "author_byline": null,
+   "categories": [
+    {
+     "id": 2,
+     "name": "Headlines",
+     "slug": "headlines"
+    }
+   ],
+   "sports": [
+    {
+     "id": 5,
+     "name": "Football",
+     "schedule_id": 55,
+     "default_roster_id": 37,
+     "abbreviation": "FB",
+     "gender": "male",
+     "slug": "football",
+     "display_ats_vs_on_calendar": true,
+     "hide_from_dropdown": false,
+     "hide_schedule_page_image": false,
+     "hide_roster_page_image": false,
+     "conference_id": 1,
+     "default_home_game_location": "The Rose Bowl",
+     "display_next_event_on_sports_schedule": true,
+     "default_season_id": 1,
+     "meta_description": null,
+     "meta_image_id": null,
+     "menu_id": 7,
+     "schedule_page_image_id": null,
+     "roster_page_image_id": null,
+     "score_decimal_places": 0,
+     "static_page_id": 7,
+     "hero_presented_by_url": null,
+     "hero_presented_by_logo_id": null,
+     "team_logo_id": null,
+     "icon_id": null,
+     "remove_overall_score_table": false,
+     "calendar_code": null,
+     "presented_by_url": null,
+     "presented_by_logo_id": null,
+     "schedule_top_notes": null,
+     "enable_schedules_countdown": false,
+     "hide_from_schedule_ticker": false,
+     "order": 0
+    }
+   ],
+   "ai_generated": false,
+   "show_in_xml_sitemap": true
+  },
+  {
+   "id": 45994,
+   "type": "video",
+   "title": "UCLA Football Media Availability - Colin Hitschler (Sept. 2, 2026)",
+   "slug": "ucla-football-media-availability-colin-hitschler-sept-2-2026",
+   "permalink": "https://uclabruins.com/news/2026/09/02/ucla-football-media-availability-colin-hitschler-sept-2-2026",
+   "image_id": 185752,
+   "image": {
+    "id": 185752,
+    "uuid": "814a2fc9-cfc4-4fe4-9879-f59ad8017f3a",
+    "title": "UCLA Football Media Availability - Colin Hitschler (Sept. 2, 2026)",
+    "mime_type": "image/jpeg",
+    "caption": null,
+    "description": null,
+    "alt": null,
+    "preview_id": null,
+    "url": "https://uclabruins.com/imgproxy/1jKtUYXwpViyjTGbPoCO-ZPMUx06Ox39fOzsNAXn28w/rs:fit:1980:0:0:0/g:ce:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg",
+    "srcset": "https://uclabruins.com/imgproxy/W4jCpJDBdb9KjnOj2Obm6veui7YbRoDia0llJ_NrvF0/rs:fit:480:0:0:0/q:80/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg 480w, https://uclabruins.com/imgproxy/4_xUxR1m1dXCm6qsAUG6mCHztV07Np7Prbryi9iyBZc/rs:fit:768:0:0:0/q:85/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg 768w, https://uclabruins.com/imgproxy/GQf4nxAMgK6-vTMQoCmzGCtAfkDI3VfrJWiAY8GAxmM/rs:fit:1024:0:0:0/q:85/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg 1024w, https://uclabruins.com/imgproxy/0UEMiCnuAjUxxLBzXI4LZB1D_WecaEVJyYiMID3kdkU/rs:fit:1200:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg 1200w, https://uclabruins.com/imgproxy/ES3CAZ2q2pvdWzHDkfJHbeLYzGHlaMmpgunC7AwrUMA/rs:fit:1600:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg 1600w, https://uclabruins.com/imgproxy/zobwdeYWf6CSg9WrgrzooIDhhAt-QG6wfGGWF8jnFps/rs:fit:1920:0:0:0/q:90/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg 1920w, https://uclabruins.com/imgproxy/u1hQvaAKVuak_7vb4iGdzUlxPxyRJEwleqPlkVSuGHk/rs:fit:2560:0:0:0/q:95/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg 2560w, https://uclabruins.com/imgproxy/XpRKQUhGOOW61Uh1LQnbrc-fIoaPxVn8Ol6LuubX9Lw/rs:fit:3840:0:0:0/q:95/aHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL3VjbGFicnVpbnMtY29tLXByb2QvMjAyNi8wOS8wMi8wOW9xelZXY09kM1lETm9UU2R4QXduTVFMTnF2dWVFRmgwajdMdDJKLmpwZw.jpg 3840w",
+    "sizes": "(min-width: 1920px) 3840px, (min-width: 1440px) 1920px, (min-width: 1024px) 1200px, (min-width: 640px) 1024px, 100vw",
+    "original_name": "maxresdefault.jpg",
+    "photo_credit": null
+   },
+   "mobile_image_id": null,
+   "image_alignment": "center",
+   "image_credit": null,
+   "image_caption": null,
+   "image_description": null,
+   "show_author": false,
+   "video_id": 10892,
+   "template": "default",
+   "visibility": "public",
+   "order": 0,
+   "short_description": null,
+   "show_ads": true,
+   "meta_title": null,
+   "meta_keywords": null,
+   "meta_description": null,
+   "meta_image_id": null,
+   "published_at": "2026-09-02T22:36:52.000000Z",
+   "schedule_event_id": null,
+   "schedule_event_link": null,
+   "author_id": null,
+   "author_byline": null,
+   "categories": [
+    {
+     "id": 2,
+     "name": "Headlines",
+     "slug": "headlines"
+    }
+   ],
+   "sports": [
+    {
+     "id": 5,
+     "name": "Football",
+     "schedule_id": 55,
+     "default_roster_id": 37,
+     "abbreviation": "FB",
+     "gender": "male",
+     "slug": "football",
+     "display_ats_vs_on_calendar": true,
+     "hide_from_dropdown": false,
+     "hide_schedule_page_image": false,
+     "hide_roster_page_image": false,
+     "conference_id": 1,
+     "default_home_game_location": "The Rose Bowl",
+     "display_next_event_on_sports_schedule": true,
+     "default_season_id": 1,
+     "meta_description": null,
+     "meta_image_id": null,
+     "menu_id": 7,
+     "schedule_page_image_id": null,
+     "roster_page_image_id": null,
+     "score_decimal_places": 0,
+     "static_page_id": 7,
+     "hero_presented_by_url": null,
+     "hero_presented_by_logo_id": null,
+     "team_logo_id": null,
+     "icon_id": null,
+     "remove_overall_score_table": false,
+     "calendar_code": null,
+     "presented_by_url": null,
+     "presented_by_logo_id": null,
+     "schedule_top_notes": null,
+     "enable_schedules_countdown": false,
+     "hide_from_schedule_ticker": false,
+     "order": 0
+    }
+   ],
+   "ai_generated": false,
+   "show_in_xml_sitemap": true
+  }
+ ],
+ "links": {
+  "first": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=1",
+  "last": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=14782",
+  "prev": null,
+  "next": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=2"
+ },
+ "meta": {
+  "current_page": 1,
+  "from": 1,
+  "last_page": 14782,
+  "links": [
+   {
+    "url": null,
+    "label": "&laquo; Previous",
+    "page": null,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=1",
+    "label": "1",
+    "page": 1,
+    "active": true
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=2",
+    "label": "2",
+    "page": 2,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=3",
+    "label": "3",
+    "page": 3,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=4",
+    "label": "4",
+    "page": 4,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=5",
+    "label": "5",
+    "page": 5,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=6",
+    "label": "6",
+    "page": 6,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=7",
+    "label": "7",
+    "page": 7,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=8",
+    "label": "8",
+    "page": 8,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=9",
+    "label": "9",
+    "page": 9,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=10",
+    "label": "10",
+    "page": 10,
+    "active": false
+   },
+   {
+    "url": null,
+    "label": "...",
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=14781",
+    "label": "14781",
+    "page": 14781,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=14782",
+    "label": "14782",
+    "page": 14782,
+    "active": false
+   },
+   {
+    "url": "https://api.uclabruins.com/website-api/articles?per_page=3&include=image%2Ccategories%2Csports&sort=-published_at&page=2",
+    "label": "Next &raquo;",
+    "page": 2,
+    "active": false
+   }
+  ],
+  "path": "https://api.uclabruins.com/website-api/articles",
+  "per_page": 3,
+  "to": 3,
+  "total": 44346
+ }
+}

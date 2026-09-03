@@ -482,6 +482,46 @@ itself as unavailable rather than substituting invented data.
 
 ---
 
+## Automatic refresh
+
+Retrieval strategy per source, as declared in `src/lib/config/sources.ts`. "Browser" means
+the reader's own browser can refetch the publisher directly; every such endpoint was
+verified on 2026-09-03 to answer with `access-control-allow-origin` reflecting the
+requesting origin, with no credential involved.
+
+| Source | Strategy | Expected | Stale after | Notes |
+| --- | --- | --- | --- | --- |
+| UCLA Dining | Scheduled rebuild | 30 min | 12 h | No CORS headers and no public API |
+| Daily Bruin | Browser + rebuild | 1 h | 6 h | Build is refused by the publisher; browser is not |
+| UCLA Radio | Browser + rebuild | 1 h | 3 d | No now-playing API exists |
+| UCLA Comms Board | Browser + rebuild | 6 h | 14 d | Governance pages change by term |
+| BruinLife | Browser + rebuild | 6 h | 14 d | Posts appear a few times a month |
+| Science Journal | Scheduled rebuild | 1 d | 3 d | Checked daily in case an index ever appears |
+| UCLA Esports | Scheduled rebuild | 3 h | 90 d | RSS host sends no CORS headers |
+| UCLA Athletics | Browser + rebuild | 1 h | 12 h | Busiest source in season |
+| UCLA Events | Scheduled rebuild | 6 h | 3 d | Payload is embedded in a page, no CORS |
+| Public Lectures | Scheduled rebuild | 1 d | 14 d | Six feeds aggregated and deduplicated |
+| Panopto | Never fetched | — | — | Placeholder by design |
+
+**Scheduling.** One GitHub Actions workflow drives every build-time source. It fires every
+30 minutes year-round and decides in `America/Los_Angeles` whether to act: every tick
+during 06:00–21:59 PT, hourly overnight. That satisfies the tightest requirement (dining,
+30 minutes) and comfortably exceeds the rest. The deviations are deliberate and listed in
+the README — one shared rebuild costs far less than ten schedules, and Vercel bills build
+minutes rather than sources.
+
+**Fallback.** Every build-time source persists a schema-validated artifact under
+`.next/cache/`, which Vercel restores between deployments. A failed retrieval replays the
+last artifact, labelled as older data and stamped with its real retrieval time — never the
+build time. With nothing cached, the section reports itself unavailable. Verified by
+pointing three adapters at an unreachable host: the sections kept their content, were
+marked `fallback`, and the build stayed green; clearing the artifacts then produced a
+correct `unavailable`.
+
+**Reporting.** Every build emits an integration status report to `out/status.json` and
+prints it to the build log. Error strings are passed through a redactor before
+publication, and the report contains variable *names* only, never values.
+
 ## Summary
 
 | Source | Method | Status |
