@@ -1,5 +1,9 @@
 /**
- * UCLA Lectures (Panopto) — TEMPLATE ONLY.
+ * UCLA Lectures via Panopto — TEMPLATE ONLY.
+ *
+ * Distinct from `src/lib/adapters/lectures/`, which collects genuinely public
+ * UCLA lectures from official feeds. This module is the future integration for
+ * institution-hosted course recordings, and stays a labelled placeholder.
  *
  * The real integration is intentionally not built. Panopto's REST API requires
  * an OAuth2 client credential issued by the institution's Panopto admin, and

@@ -10,7 +10,7 @@
  * the UI needs to change — see `src/lib/adapters/lectures.ts`.
  */
 
-import type { LectureRecord } from '@/lib/adapters/lectures';
+import type { LectureRecord } from '@/lib/adapters/panopto';
 
 /** Dates are expressed as offsets so the fixture never goes stale. */
 export const MOCK_LECTURES: LectureRecord[] = [

@@ -17,6 +17,7 @@ import {
   Gamepad2,
   GraduationCap,
   Landmark,
+  Mic,
   Newspaper,
   Radio,
   Trophy,
@@ -36,6 +37,7 @@ export const SOURCE_IDS = [
   'esports',
   'athletics',
   'events',
+  'public-lectures',
   'lectures',
 ] as const;
 
@@ -80,6 +82,12 @@ export interface SourceConfig {
   Icon: LucideIcon;
   /** Accent colors, one per theme, so contrast holds in both. */
   accent: { light: string; dark: string };
+  /**
+   * Route for this channel. Most sources use the generated `/source/<slug>`
+   * page; a source with its own bespoke experience sets this instead, and is
+   * then skipped by that page's `generateStaticParams`.
+   */
+  route?: string;
   /** Show in the primary navigation. */
   inNav: boolean;
   /** Turn an integration off without deleting its adapter. */
@@ -268,20 +276,42 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     inNav: true,
     enabled: true,
   },
-  lectures: {
-    id: 'lectures',
-    name: 'UCLA Lectures',
+  'public-lectures': {
+    id: 'public-lectures',
+    name: 'UCLA Public Lectures',
     shortName: 'Lectures',
     blurb:
-      'Recorded lectures and talks. Interface template — the Panopto integration is not built.',
-    slug: 'lectures',
+      'Publicly available lectures, seminars, panels and academic talks from UCLA centres and institutes.',
+    slug: 'public-lectures',
+    route: '/lectures',
+    homepage: 'https://www.ucla.edu/',
+    endpoint: 'Multiple verified public feeds — see docs/INTEGRATIONS.md',
+    retrieval: 'rss',
+    updateFrequency: 'Weekly to monthly, depending on the centre',
+    attribution: 'UCLA centres and institutes',
+    integrationNote:
+      'Collected at build time from official public feeds published by UCLA centres and institutes, each verified as genuinely UCLA-affiliated. Metadata and links only — audio and video stay on the publisher’s own site and are never rehosted. Every talk is labelled with the format its publisher gives it, so a research podcast is never presented as a course lecture. This is separate from the Panopto integration, which is not built.',
+    defaultDataMode: 'build',
+    kinds: ['lecture', 'audio'],
+    Icon: Mic,
+    accent: { light: '#7a2f8f', dark: '#d9a6e8' },
+    inNav: true,
+    enabled: true,
+  },
+  lectures: {
+    id: 'lectures',
+    name: 'UCLA Lectures via Panopto',
+    shortName: 'Panopto',
+    blurb:
+      'Institution-hosted course recordings. Interface template — the Panopto integration is not built.',
+    slug: 'panopto',
     homepage: 'https://www.panopto.com/',
     endpoint: null,
     retrieval: 'placeholder',
     updateFrequency: 'Not yet integrated',
     attribution: 'Placeholder template — not real UCLA lecture content',
     integrationNote:
-      'Coming soon. This is a reusable visual template rendering clearly-labelled placeholder rows. Panopto requires institution-issued OAuth credentials and returns viewer-scoped content, so there is nothing a public static site can fetch anonymously. The adapter contract is finished; only the provider is missing.',
+      'Coming later, and separate from the public lectures BruinWeb already collects. This is a reusable visual template rendering clearly-labelled placeholder rows. Panopto requires institution-issued OAuth credentials and returns viewer-scoped content, so there is nothing a public static site can fetch anonymously — BruinWeb does not and will not provide access to private course recordings. The adapter contract is finished; only the provider is missing.',
     defaultDataMode: 'placeholder',
     kinds: ['lecture'],
     Icon: GraduationCap,
@@ -305,6 +335,14 @@ export function getSource(id: string): SourceConfig | undefined {
 export function getSourceBySlug(slug: string): SourceConfig | undefined {
   return SOURCE_LIST.find((source) => source.slug === slug);
 }
+
+/** Where a channel's own page lives. */
+export function sourceHref(source: SourceConfig): string {
+  return source.route ?? `/source/${source.slug}`;
+}
+
+/** Sources rendered by the generated `/source/<slug>` page. */
+export const GENERATED_SOURCE_PAGES = SOURCE_LIST.filter((source) => !source.route);
 
 /** Display name for a source id, falling back to the raw id. */
 export function sourceName(id: string): string {

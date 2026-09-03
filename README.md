@@ -19,7 +19,9 @@ adapter, normalized into one shared shape, and baked into HTML. There is no data
 no serverless function and no authentication. Search and filtering run in the browser against the
 content already on the page.
 
-- 10 channels, 8 of them fetching live data at build time
+- 11 channels, 9 of them fetching live data at build time
+- A dining view that leads with each hall's **main courses** for the current meal
+- A **public lectures** browser: 171 talks from six verified UCLA centres and institutes
 - One normalized `MediaItem` type shared across every integration
 - Cross-source search, filters (source / media type / category / date), and a "Today at UCLA" view
 - Light and dark themes, keyboard navigation, reduced-motion support
@@ -131,7 +133,8 @@ Production and Preview, then redeploy.
 | 7 | UCLA Esports | RSS | `uclaclubsports.com/rss.aspx?path=es` | **Live (build)** | News only. As a club sport it has no schedule, roster or stream feed. |
 | 8 | UCLA Athletics | JSON API | `api.uclabruins.com/website-api/*` | **Live (build)** | Unofficial, undocumented API — no stability guarantee. Carries no article body and no in-line scores. |
 | 9 | UCLA Events | Embedded structured data | `www.ucla.edu/events` | **Live (build)** | Curated highlights, not the full campus calendar. `calendar.ucla.edu` is unreachable/retired. |
-| 10 | UCLA Lectures (Panopto) | Placeholder template | — | **Placeholder** | Deliberately not built. Requires institution-issued OAuth credentials. |
+| 10 | UCLA Public Lectures | RSS (six verified feeds) | see `src/lib/config/lecture-sources.ts` | **Live (build)** | Metadata and links only; media stays on the publisher's host. YouTube is excluded — its feed path is robots-disallowed. |
+| 11 | UCLA Lectures via Panopto | Placeholder template | — | **Placeholder** | Deliberately not built. Requires institution-issued OAuth credentials. |
 
 Full research notes, including everything that was tried and rejected, are in
 [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md).
@@ -150,6 +153,16 @@ Full research notes, including everything that was tried and rejected, are in
   `imgproxy` URLs whose dimensions cannot be rewritten, so those load at their published size.
 - **Markup dependence.** UCLA Dining and UCLA Events are parsed from HTML. An upstream redesign will
   break them — by design they then show an "unavailable" state instead of stale or invented content.
+- **YouTube is excluded.** Official UCLA channels (IPAM, the Burkle Center, UCLA Library, the School
+  of Law, DGSOM, the International Institute) carry real lecture recordings, and YouTube's per-channel
+  Atom feed would be the natural way to read them. It is off limits: `youtube.com/robots.txt`
+  contains `Disallow: /feeds/videos.xml` for every crawler but Google's own, and the endpoint returned
+  404 to every request regardless. Adding those channels means the YouTube Data API and an API key —
+  a build-time secret and a new adapter — which is documented in the integration report but not built.
+- **Lecture freshness and media.** Lectures are collected at build time like everything else. Only
+  metadata and links are stored: audio and video stay on each publisher's own host and are never
+  copied, rehosted or re-encoded. Playback is embedded only where a publisher officially supports it;
+  today no source does, so every talk links out.
 - **Datacenter blocking (affects Daily Bruin on the hosted build).** The Daily Bruin refuses requests
   from cloud datacenter networks — `403` on its REST API, its RSS feed *and* its public site. Vercel
   builds run in such a network, so on https://bruinweb.vercel.app the Daily Bruin section shows its
@@ -189,6 +202,52 @@ Two rules keep this maintainable:
    and the normalized data; they never contain a headline, URL, menu item or date.
 2. **A source schema change touches only its adapter.** Everything downstream depends on `MediaItem`,
    not on any upstream shape.
+
+### Dining: how main courses are chosen
+
+Each dining hall leads with a **Main Courses** group for the meal period, with the full menu
+underneath grouped by the stations UCLA publishes. The classification is deterministic and driven by
+configuration — no dish is hard-coded, and no model is consulted at build time or at page load.
+
+- `src/lib/config/dining-menu.ts` holds the rule tables: station-name patterns mapped onto a small
+  taxonomy (`main`, `side`, `salad`, `soup`, `dessert`, `bakery`, `fruit`, `beverage`, `condiment`),
+  strong and weak dish-name demotion rules, and entrée signals.
+- `classifyMenuItem` in `src/lib/adapters/dining.ts` owns precedence only:
+  1. A recognised station sets the base category.
+  2. Strong rules pull desserts, drinks, fruit, soups, salads and porridge out of `main`
+     unconditionally.
+  3. Weak rules demote sauces, breads and starches, but yield to a composed dish — so
+     "Spaghetti w/ Marinara" stays a main course while "Roasted Tomato Salsa" does not.
+  4. An unrecognised station falls back to dish-name signals alone.
+
+To adjust it, edit the tables — not the components, and not the adapter. `tests/dining-main-courses.test.ts`
+asserts that sides, drinks, desserts, condiments, fruit, soups, salads and bakery items are never
+promoted, at any station.
+
+Dietary and allergen labels are shown exactly as UCLA publishes them; allergens are phrased as
+"contains", never as a claim of BruinWeb's own.
+
+### Adding a public lecture source
+
+`src/lib/config/lecture-sources.ts` is the registry. Every entry records the endpoint, the UCLA unit,
+the evidence of affiliation, how it was discovered, its update frequency and any usage restriction.
+Sources investigated and rejected are kept in `EXCLUDED_LECTURE_SOURCES` with the reason, so nobody
+re-adds them without re-checking.
+
+To add one:
+
+1. Verify it is genuinely UCLA-affiliated — a `ucla.edu` link inside the feed, or a `ucla.edu` page
+   linking to it. "UCLA" in the title is not evidence.
+2. Check the host's robots.txt and terms. If automated access is discouraged, **do not work around
+   it** — add the source to `EXCLUDED_LECTURE_SOURCES` with the reason instead.
+3. Confirm the content is genuinely lectures or academic talks, and set `format` to what the
+   publisher actually calls it. A research conversation is a `podcast`, not a `lecture`.
+4. Add the entry, choosing an existing `adapter` or writing a new one under
+   `src/lib/adapters/lectures/`. Adapters return `Lecture[]` and may throw; the collector isolates
+   failures so one dead feed cannot break the build.
+5. Set `embedAllowed` only where the publisher officially supports embedding. Everything else is
+   linked, never reframed.
+6. Confirm every resulting URL loads publicly without signing in.
 
 ### Adding another source adapter
 

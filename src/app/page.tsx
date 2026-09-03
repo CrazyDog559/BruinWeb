@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { Container, Section } from '@/components/layout/Section';
 import { MediaCard } from '@/components/media/MediaCard';
 import { SITE, FEED } from '@/lib/config/site';
-import { NAV_SOURCES } from '@/lib/config/sources';
+import { NAV_SOURCES, sourceHref } from '@/lib/config/sources';
 import { getSnapshot, pickFeatured } from '@/lib/data/load';
 import { isCampusToday } from '@/lib/normalize';
 import type { MediaItem } from '@/lib/types';
@@ -139,7 +139,7 @@ export default async function HomePage() {
               return (
                 <li key={source.id}>
                   <Link
-                    href={`/source/${source.slug}`}
+                    href={sourceHref(source)}
                     className="surface flex h-full gap-4 rounded-[var(--radius-card)] p-5 transition-shadow hover:shadow-md"
                   >
                     <source.Icon

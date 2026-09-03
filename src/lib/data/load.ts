@@ -11,15 +11,16 @@
 import { FEED } from '@/lib/config/site';
 import { SOURCE_IDS, type SourceId } from '@/lib/config/sources';
 import { dedupeItems, sortByDateDesc } from '@/lib/normalize';
-import type { DiningDay, MediaItem, SourceResult } from '@/lib/types';
+import type { DiningDay, LectureCollection, MediaItem, SourceResult } from '@/lib/types';
 
 import { loadAthletics } from '@/lib/adapters/athletics';
 import { loadCommBoard } from '@/lib/adapters/comm-board';
 import { loadDining } from '@/lib/adapters/dining';
 import { loadEsports } from '@/lib/adapters/esports';
 import { loadEvents } from '@/lib/adapters/events';
-import { loadLectures } from '@/lib/adapters/lectures';
+import { loadLectures } from '@/lib/adapters/panopto';
 import { loadScienceJournal } from '@/lib/adapters/science-journal';
+import { collectLectures, lecturesAsSourceResult } from '@/lib/adapters/lectures';
 import { loadStudentMediaSources } from '@/lib/adapters/student-media';
 
 export interface MediaSnapshot {
@@ -29,6 +30,8 @@ export interface MediaSnapshot {
   results: Record<SourceId, SourceResult>;
   /** Dining needs richer structure than `MediaItem` can carry. */
   dining: DiningDay | null;
+  /** Public UCLA lectures, which carry speaker and series metadata of their own. */
+  lectures: LectureCollection;
   /** When this build ran. Displayed as the site-wide freshness stamp. */
   generatedAt: string;
 }
@@ -49,6 +52,7 @@ function emptyResult(sourceId: string, fetchedAt: string): SourceResult {
  */
 const DEDUPE_PRIORITY: SourceId[] = [
   'daily-bruin',
+  'public-lectures',
   'athletics',
   'bruinlife',
   'ucla-radio',
@@ -63,6 +67,8 @@ const DEDUPE_PRIORITY: SourceId[] = [
 async function loadAll(now: Date): Promise<MediaSnapshot> {
   const fetchedAt = now.toISOString();
 
+  const lectureCollection = await collectLectures(now);
+
   const settled = await Promise.allSettled([
     loadDining(now),
     loadStudentMediaSources(),
@@ -74,7 +80,7 @@ async function loadAll(now: Date): Promise<MediaSnapshot> {
     loadLectures('lectures', undefined, now),
   ]);
 
-  const collected: SourceResult[] = [];
+  const collected: SourceResult[] = [lecturesAsSourceResult(lectureCollection)];
   let dining: DiningDay | null = null;
 
   for (const outcome of settled) {
@@ -108,7 +114,7 @@ async function loadAll(now: Date): Promise<MediaSnapshot> {
     }
   }
 
-  return { items, results, dining, generatedAt: fetchedAt };
+  return { items, results, dining, lectures: lectureCollection, generatedAt: fetchedAt };
 }
 
 let snapshot: Promise<MediaSnapshot> | null = null;

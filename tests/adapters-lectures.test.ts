@@ -9,7 +9,7 @@ import {
   PANOPTO_ENV_VARS,
   type LectureProvider,
   type LectureRecord,
-} from '@/lib/adapters/lectures';
+} from '@/lib/adapters/panopto';
 
 /** Build a fake process.env fixture without mutating the real global. */
 function fakeEnv(vars: Record<string, string | undefined>): NodeJS.ProcessEnv {

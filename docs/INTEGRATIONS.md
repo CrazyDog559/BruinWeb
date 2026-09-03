@@ -39,10 +39,35 @@ plugin) uses `div.at-a-glance-menu[id=breakfastmenu|lunchmenu|dinnermenu]` →
 (`h4` = station) → `ul > li > a` (dish) with `img.meal-station__allergen-icon[title]` for diet and
 allergen labels.
 
+**Main-course classification.** The source's structured category is the menu station — the `<h4>`
+inside `at-a-glance-menu__meal-station`. These are brand names, not a taxonomy: across five days of
+live menus the real values were `Capri`, `The Grill/Psistaris`, `Alimenti`, `Capri Pizza`, `Dolce`,
+`Mezze`, `Fruit`, `Yogurt Bar`, `CONDIMENTS` and a literal `.` placeholder. They are normalized in
+`src/lib/config/dining-menu.ts` onto a small taxonomy, with the adapter owning precedence only:
+
+1. A recognised station sets the base category.
+2. Strong dish rules unconditionally pull desserts, drinks, fruit, soups, salads and porridge out of
+   `main` — a station that serves entrées also serves cake.
+3. Weak dish rules demote sauces, breads and starches but yield to a composed dish, so
+   "Spaghetti w/ Marinara" stays a main course while "Roasted Tomato Salsa" does not.
+4. An unrecognised station falls back to dish-name signals alone, so a new station still yields
+   something useful.
+
+Deterministic and offline: the same inputs always give the same answer, and no model is consulted at
+build time or at page load. Measured against five days of live menus, 32 of 114 dishes are promoted
+and every one is a genuine entrée. The direction of error is deliberate — a composed entrée salad is
+demoted to `salad` rather than a side being promoted.
+
+Dietary and allergen labels come from the `title` attribute of `img.meal-station__allergen-icon` and
+are displayed exactly as UCLA publishes them. Allergens are phrased as "contains"; BruinWeb makes no
+medical or allergen claim of its own.
+
 **Unresolved limitation.** This is markup parsing, not an API. An upstream redesign will break it;
 the section then reports "unavailable" rather than showing stale menus. Only the residential
 restaurants listed on the hours table are covered — quick-service venues are not. No terms of use
-governing this content were found either permitting or forbidding automated access.
+governing this content were found either permitting or forbidding automated access. Menus are a
+build-time snapshot, so the UI shows a stale-menu banner once the reader's campus day moves past the
+date the snapshot covers.
 
 ---
 
@@ -340,16 +365,106 @@ return, or a `community.ucla.edu` scraper accepted as a maintenance burden.
 
 ---
 
-## 10. UCLA Lectures / Panopto — **PLACEHOLDER TEMPLATE BY DESIGN**
+## 10. UCLA Public Lectures
+
+| | |
+| --- | --- |
+| **Chosen method** | Official public RSS feeds (option b) |
+| **Sources** | Six verified UCLA centres and institutes — see the table below |
+| **Update frequency** | Weekly to monthly, depending on the centre |
+| **Status** | Live at build — 171 talks collected |
+
+Separate from the Panopto placeholder in section 11. Everything here is public, unauthenticated and
+published by UCLA units themselves. BruinWeb stores metadata and links only: audio and video stay on
+each publisher's own host and are never copied, rehosted or re-encoded, and no playback is embedded
+because no current source officially supports third-party embedding.
+
+### Sources integrated
+
+| Source | UCLA unit | Endpoint | Format label | Affiliation evidence |
+| --- | --- | --- | --- | --- |
+| Legacies of Ancient Persia | Pourdavoud Institute for the Study of the Iranian World | `feeds.resonaterecordings.com/legacies-of-ancient-persia` | Lecture | Channel and episode links resolve to `pourdavoud.ucla.edu` |
+| The History-Politics Podcast | Luskin Center for History and Policy | `rss.buzzsprout.com/952522.rss` | Podcast | Channel link is `luskincenter.history.ucla.edu` |
+| UCLA Housing Voice | Lewis Center for Regional Policy Studies | `rss.buzzsprout.com/1745274.rss` | Podcast | Channel link is `lewis.ucla.edu`; listed in the UCLA College podcast directory |
+| Burkle Center for International Relations | Burkle Center | `international.ucla.edu/sites/burkle/rss.aspx` | Panel | Feed served from `international.ucla.edu` |
+| Center for European and Russian Studies | CERS | `international.ucla.edu/sites/euro/rss.aspx` | Guest talk | Feed served from `international.ucla.edu` |
+| Latin American Institute | LAI | `international.ucla.edu/sites/lai/rss.aspx` | Panel | Feed served from `international.ucla.edu` |
+
+Each entry in `src/lib/config/lecture-sources.ts` records the endpoint, the responsible UCLA unit,
+the affiliation evidence, the discovery method, the update frequency and the usage restriction.
+
+**Labelling.** `format` is set per source from what the publisher actually calls the content, so a
+research-conversation podcast is never presented as a course lecture. The UI shows that label on
+every card and detail page.
+
+**Field notes, established by testing.**
+
+- `itunes:duration` appears in two spellings: whole seconds (Buzzsprout, Resonate) and `HH:MM:SS`
+  (the International Institute's ASP.NET feeds). Both are parsed; anything else yields `null` rather
+  than a guess.
+- Buzzsprout feeds publish **no per-episode `<link>`**. Their enclosure URL is the episode's own page
+  with a media extension appended, so the public page is derived by dropping that extension — a
+  deterministic transformation of a URL the feed itself publishes, verified to return 200 without a
+  login. An item with no usable public page is dropped rather than pointed somewhere approximate.
+- Speaker names are read only from an explicit `itunes:author` byline or from the two title shapes
+  these feeds actually use ("… with <Name>", "Episode N: Dr. <Name>"). Otherwise `speaker` is `null`;
+  BruinWeb does not guess at a person's name.
+- Descriptions are stripped to plain text at build time, so no source HTML reaches the DOM.
+- `recordedAt` stays `null`: these feeds publish a publication date only, and the two are not the
+  same thing.
+
+**Deduplication.** The International Institute cross-lists the same talk on several centre feeds, so
+records are deduplicated by canonical URL and by a normalized title + speaker + date key.
+
+**Validation.** All 171 collected URLs were fetched and returned HTTP 200 with no sign-in wall.
+
+**Robots and restrictions.** `international.ucla.edu` disallows crawling `/media`, so the audio files
+on that host are never fetched — readers are linked to the publisher's own episode page instead.
+`buzzsprout.com/robots.txt` disallows only one unrelated feed.
+
+### Investigated and deliberately excluded
+
+- **Official UCLA YouTube channels** (IPAM, Burkle Center, UCLA Library, School of Law, DGSOM,
+  International Institute). These are genuine UCLA channels with real lecture recordings, and the
+  per-channel Atom feed at `youtube.com/feeds/videos.xml?channel_id=…` would have been the natural
+  surface. **Excluded**: `youtube.com/robots.txt` contains `Disallow: /feeds/videos.xml` for every
+  crawler except Google's own, and the endpoint returned 404 to every request made from two
+  independent networks, including for a known-good non-UCLA control channel. We do not work around a
+  robots.txt directive. The official alternative is the YouTube Data API, which requires an API key —
+  that would be a build-time secret (`YOUTUBE_API_KEY`, never `NEXT_PUBLIC_`) plus a new adapter, and
+  is the documented route to adding these channels later. The feed also carries no duration field, so
+  the API would be needed for that regardless.
+- **UCLA Anderson School of Management podcasts** — genuine faculty research talks, but
+  `anderson.ucla.edu/robots.txt` disallows automated crawlers by name. Excluded on the publisher's
+  stated preference rather than worked around.
+- **UCLA BruinCast** — course capture requiring a UCLA login. Out of scope entirely: BruinWeb never
+  touches authenticated or enrolment-gated material.
+- **UCLA Internal Medicine Grand Rounds** — feed resolves but has published nothing since 2013, and
+  its channel link points off the `ucla.edu` domain, so affiliation could not be confirmed.
+- **Re:Work (UCLA Labor Center)** — verified UCLA affiliation, but narrative documentary journalism
+  rather than lectures. Including it would mislabel the content.
+- **Works In Progress (UCLA Arts)** — interview format, and no new episode in roughly two years.
+- **Center for Chinese Studies, African Studies Center, Nazarian Center, Center for India and South
+  Asia** — real UCLA feeds carrying genuine talks, but dormant (most recent items range from 2009 to
+  2024). Each is a one-line addition if dormant content becomes desirable.
+- **IPAM, CNSI, UCLA Law, CAP UCLA, UCLA Library** — no public RSS/JSON feed found outside YouTube.
+
+**Freshness.** Lectures refresh on every deploy, like every other source. See the deploy-hook section
+of the README for scheduled rebuilds.
+
+---
+
+## 11. UCLA Lectures via Panopto — **PLACEHOLDER TEMPLATE BY DESIGN**
 
 | | |
 | --- | --- |
 | **Chosen method** | Placeholder template — the real integration was explicitly out of scope |
 | **Status** | Placeholder, labelled "Coming Soon" throughout |
 
-Per the brief, the real integration is not built. The section ships as a reusable visual template
-with cards for course/lecture title, instructor, department, date, duration, thumbnail and access
-status.
+Per the brief, the real integration is not built, and it is kept separate from the public lectures in
+section 10. The section ships as a reusable visual template with cards for course/lecture title,
+instructor, department, date, duration, thumbnail and access status. BruinWeb does not, and will not,
+provide access to private course recordings.
 
 **Isolation.** Placeholder rows live in exactly one file, `src/lib/mock/lectures.ts`, and are marked
 at the top as not-real. Every generated item carries `dataMode: 'placeholder'`, a "Placeholder" badge
@@ -380,7 +495,8 @@ itself as unavailable rather than substituting invented data.
 | UCLA Esports | RSS | Live at build (news only; no schedule/roster/stream exists) |
 | UCLA Athletics | JSON API | Live at build (unofficial API; no article bodies or in-line scores) |
 | UCLA Events | Embedded structured data | Live at build (curated subset, not the full calendar) |
-| UCLA Lectures (Panopto) | Placeholder | **Template only** — by design |
+| UCLA Public Lectures | RSS × 6 verified feeds | Live at build (171 talks) |
+| UCLA Lectures via Panopto | Placeholder | **Template only** — by design |
 
-Eight of ten sources fetch live data at build time. One is blocked with the blocker documented and the
-adapter contract in place. One is an intentional placeholder.
+Nine of eleven sources fetch live data at build time. One is blocked with the blocker documented and
+the adapter contract in place. One is an intentional placeholder.

@@ -9,16 +9,16 @@ import { ExternalLink } from '@/components/ui/ExternalLink';
 import { Badge } from '@/components/ui/Badge';
 import {
   ESPORTS_SOCIALS,
+  GENERATED_SOURCE_PAGES,
   RETRIEVAL_LABELS,
-  SOURCE_LIST,
   getSourceBySlug,
 } from '@/lib/config/sources';
 import { getSnapshot } from '@/lib/data/load';
 import { EMPTY_FILTERS } from '@/lib/search';
 
-/** One static page per configured source. */
+/** One static page per configured source that does not have a bespoke route. */
 export function generateStaticParams() {
-  return SOURCE_LIST.map((source) => ({ slug: source.slug }));
+  return GENERATED_SOURCE_PAGES.map((source) => ({ slug: source.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {

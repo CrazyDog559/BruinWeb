@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu, Search, X } from 'lucide-react';
 
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { NAV_SOURCES } from '@/lib/config/sources';
+import { NAV_SOURCES, sourceHref } from '@/lib/config/sources';
 import { SITE } from '@/lib/config/site';
 
 const PRIMARY_LINKS = [
@@ -107,7 +107,7 @@ export function Header() {
       >
         <ul className="rail mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8">
           {NAV_SOURCES.map((source) => {
-            const href = `/source/${source.slug}`;
+            const href = sourceHref(source);
             const active = pathname === href;
             return (
               <li key={source.id}>
@@ -153,7 +153,7 @@ export function Header() {
               {NAV_SOURCES.map((source) => (
                 <li key={source.id}>
                   <Link
-                    href={`/source/${source.slug}`}
+                    href={sourceHref(source)}
                     className="flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm hover:bg-[var(--bg-subtle)]"
                   >
                     <source.Icon aria-hidden="true" className="size-4 text-[var(--ink-faint)]" />
