@@ -150,12 +150,19 @@ Full research notes, including everything that was tried and rejected, are in
   `imgproxy` URLs whose dimensions cannot be rewritten, so those load at their published size.
 - **Markup dependence.** UCLA Dining and UCLA Events are parsed from HTML. An upstream redesign will
   break them — by design they then show an "unavailable" state instead of stale or invented content.
-- **Datacenter blocking.** `wp.dailybruin.com` answers normally from a residential connection but
-  returns `403` to cloud datacenter ranges — where Vercel builds run — on both its REST API and its
-  RSS feed. The adapter falls back to the structured payload embedded in `dailybruin.com`, a
-  different host, which carries the same post objects. BruinWeb identifies itself honestly in its
-  `User-Agent` at every step and never disguises requests as a browser; if every public surface
-  refuses, the section shows an "unavailable" state rather than stale or invented content.
+- **Datacenter blocking (affects Daily Bruin on the hosted build).** The Daily Bruin refuses requests
+  from cloud datacenter networks — `403` on its REST API, its RSS feed *and* its public site. Vercel
+  builds run in such a network, so on https://bruinweb.vercel.app the Daily Bruin section shows its
+  "could not reach this source" state, while a build run from an ordinary network fetches it
+  normally. The adapter tries all three public surfaces in turn; BruinWeb identifies itself honestly
+  in its `User-Agent` at every step and does not disguise requests as a browser to get around the
+  block. Two legitimate ways to include the section in a hosted build:
+
+  1. Ask the Daily Bruin to allow the build's User-Agent or network.
+  2. Build where the block does not apply and deploy the output — `npm run build`, then
+     `npx vercel deploy --prebuilt --prod`.
+
+  Every other source is unaffected, and no other part of the site depends on this one.
 
 ## Architecture
 

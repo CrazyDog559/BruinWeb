@@ -119,7 +119,7 @@ export const SOURCES: Record<SourceId, SourceConfig> = {
     updateFrequency: 'Several times daily during the term',
     attribution: 'Daily Bruin',
     integrationNote:
-      'Headlines, excerpts and metadata only. Full article text is copyrighted and is never republished here — every card links back to dailybruin.com.',
+      'Headlines, excerpts and metadata only — full article text is copyrighted and is never republished here. Note that the Daily Bruin blocks requests from cloud datacenter networks across its REST API, its RSS feed and its public site alike. Builds run on Vercel are refused, so this section is empty on the hosted build; a build run from an ordinary network fetches it normally. We do not disguise our requests to work around that block.',
     defaultDataMode: 'build',
     kinds: ['article'],
     Icon: Newspaper,
