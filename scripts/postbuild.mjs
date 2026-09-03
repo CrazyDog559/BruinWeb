@@ -2,9 +2,15 @@
 /**
  * Post-build step.
  *
- * Moves the integration status report generated during static export into the
- * published output, and prints it as a build-log summary so a scheduled rebuild
- * is legible in GitHub Actions and Vercel logs without opening the site.
+ * Prints the integration status report as a build-log summary, so a scheduled
+ * rebuild is legible in GitHub Actions and Vercel logs without opening the site.
+ *
+ * The published `status.json` is NOT written here — it is emitted by the
+ * `app/status.json` route during the build itself. Vercel's Next.js builder
+ * captures the exported output at the end of `next build`, so a file written
+ * afterwards would never reach the deployment. This step only writes a local
+ * copy when one is missing, which is a convenience for `npm run build` on a
+ * laptop.
  *
  * Exits 0 even when a source is unavailable. A scheduled rebuild must fail only
  * for genuine application or deployment faults — one publisher having a bad day
@@ -40,10 +46,16 @@ async function main() {
   const report = JSON.parse(await readFile(SOURCE, 'utf8'));
 
   try {
-    await access(OUT_DIR);
-    await writeFile(TARGET, JSON.stringify(report), 'utf8');
+    await access(TARGET);
   } catch {
-    console.warn('[postbuild] out/ is not present; status.json was not published');
+    // The route handler should have produced it; write it only as a fallback.
+    try {
+      await access(OUT_DIR);
+      await writeFile(TARGET, JSON.stringify(report, null, 2), 'utf8');
+      console.warn('[postbuild] status.json was missing from out/; wrote a local copy');
+    } catch {
+      console.warn('[postbuild] out/ is not present; skipped the local status.json copy');
+    }
   }
 
   const { summary, sources, generatedAt } = report;
