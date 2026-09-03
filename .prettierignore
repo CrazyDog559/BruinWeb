@@ -1,0 +1,6 @@
+.next
+out
+node_modules
+.cache
+package-lock.json
+*.md
