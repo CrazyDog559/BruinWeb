@@ -88,7 +88,7 @@ export default async function SourcePage({ params }: { params: Promise<{ slug: s
           <h2 id="dining-today" className="font-display mb-5 text-2xl">
             Dining halls today
           </h2>
-          <DiningDayView day={dining} />
+          <DiningDayView day={dining} fetchedAt={result?.fetchedAt} />
         </section>
       ) : source.id === 'lectures' ? (
         <LectureTemplate items={items} result={result} source={source} showNote={false} />

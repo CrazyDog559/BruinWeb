@@ -42,7 +42,7 @@ export default async function TodayPage() {
         linkLabel="All dining"
       >
         {dining && results.dining?.status === 'ok' ? (
-          <DiningDayView day={dining} />
+          <DiningDayView day={dining} fetchedAt={results.dining?.fetchedAt} />
         ) : (
           <SourceStatus source={SOURCES.dining} result={results.dining} />
         )}

@@ -1,3 +1,5 @@
+import type { MenuCategoryKind } from '@/lib/config/dining-menu';
+
 /**
  * Dining-specific structures. Owned entirely by the dining adapter — the shared
  * `MediaItem` contract does not know about meal periods or menu sections.
@@ -28,11 +30,20 @@ export interface DiningHours {
 export interface DiningMenuItem {
   id: string;
   name: string;
-  /** Menu station, e.g. "The Front Burner". Null when the source omits it. */
+  /** Menu station as published, e.g. "The Grill/Psistaris". Null if omitted. */
   station: string | null;
-  /** Dietary/allergen codes as published upstream, e.g. "vegan", "contains-nuts". */
+  /** Dietary and allergen labels exactly as published by UCLA. */
   tags: string[];
   url: string | null;
+  /** Normalized category. Derived by the dining adapter, never by the UI. */
+  category: MenuCategoryKind;
+  /** True when this is a substantial entrée worth promoting. */
+  isMainCourse: boolean;
+  /**
+   * Why the classifier landed on `category`. Kept for debugging and for the
+   * tests that guard against sides being promoted.
+   */
+  classifiedBy: 'station' | 'dish-name' | 'station-then-dish-name' | 'default';
 }
 
 export interface DiningMenuSection {

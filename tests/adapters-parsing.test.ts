@@ -144,7 +144,18 @@ describe('dining buildDiningDay', () => {
         [
           {
             period: 'lunch' as const,
-            items: [{ id: 'x', name: 'Item', station: null, tags: [], url: null }],
+            items: [
+              {
+                id: 'x',
+                name: 'Item',
+                station: null,
+                tags: [],
+                url: null,
+                category: 'other' as const,
+                isMainCourse: false,
+                classifiedBy: 'default' as const,
+              },
+            ],
           },
         ],
       ],
@@ -168,7 +179,18 @@ describe('dining buildDiningDay', () => {
         [
           {
             period: 'dinner' as const,
-            items: [{ id: 'y', name: 'Special', station: null, tags: [], url: null }],
+            items: [
+              {
+                id: 'y',
+                name: 'Special',
+                station: null,
+                tags: [],
+                url: null,
+                category: 'other' as const,
+                isMainCourse: false,
+                classifiedBy: 'default' as const,
+              },
+            ],
           },
         ],
       ],

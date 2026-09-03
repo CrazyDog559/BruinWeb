@@ -18,6 +18,15 @@
 
 import * as cheerio from 'cheerio';
 
+import {
+  EMPTY_STATION_PATTERN,
+  ENTREE_DISH_SIGNALS,
+  MAIN_COURSE_KIND,
+  STATION_RULES,
+  STRONG_DEMOTE_DISH_RULES,
+  WEAK_DEMOTE_DISH_RULES,
+  type MenuCategoryKind,
+} from '@/lib/config/dining-menu';
 import { SOURCES } from '@/lib/config/sources';
 import { fetchText } from '@/lib/net/fetch-json';
 import { campusDate, campusWallClockToIso, makeId, slugify } from '@/lib/normalize';
@@ -58,6 +67,67 @@ const ANCHOR_TO_PERIOD: Record<string, MealPeriod> = {
   extendeddinnermenu: 'late-night',
   latenightmenu: 'late-night',
 };
+
+export interface Classification {
+  category: MenuCategoryKind;
+  isMainCourse: boolean;
+  classifiedBy: DiningMenuItem['classifiedBy'];
+}
+
+/**
+ * Decide what kind of thing a dish is.
+ *
+ * Deterministic, offline and pure: the same station and dish name always give
+ * the same answer, and no model or network call is involved at build time or at
+ * page load. The rule tables live in `src/lib/config/dining-menu.ts`; only the
+ * precedence logic lives here.
+ *
+ *   1. A recognised station sets the base category.
+ *   2. A dish that names an accompaniment is demoted out of `main`, because a
+ *      station that serves entrées also serves porridge and steamed vegetables.
+ *   3. Only when the station is unrecognised may a dish name promote itself to
+ *      `main`, and only if it looks like a substantial protein or composed plate.
+ *
+ * A dish is never promoted on its name alone out of a desserts, drinks, sides
+ * or condiments station.
+ */
+export function classifyMenuItem(station: string | null, dishName: string): Classification {
+  const stationRule =
+    station && !EMPTY_STATION_PATTERN.test(station)
+      ? STATION_RULES.find((rule) => rule.pattern.test(station))
+      : undefined;
+
+  const strong = STRONG_DEMOTE_DISH_RULES.find((rule) => rule.pattern.test(dishName));
+  const looksLikeEntree = ENTREE_DISH_SIGNALS.test(dishName);
+  const weak = looksLikeEntree
+    ? undefined
+    : WEAK_DEMOTE_DISH_RULES.find((rule) => rule.pattern.test(dishName));
+  const demotion = strong ?? weak;
+
+  if (stationRule) {
+    if (stationRule.kind !== MAIN_COURSE_KIND) {
+      return { category: stationRule.kind, isMainCourse: false, classifiedBy: 'station' };
+    }
+    if (demotion) {
+      return {
+        category: demotion.kind,
+        isMainCourse: false,
+        classifiedBy: 'station-then-dish-name',
+      };
+    }
+    return { category: MAIN_COURSE_KIND, isMainCourse: true, classifiedBy: 'station' };
+  }
+
+  // Unrecognised station: fall back to the dish name alone.
+  if (demotion) {
+    return { category: demotion.kind, isMainCourse: false, classifiedBy: 'dish-name' };
+  }
+  if (looksLikeEntree) {
+    return { category: MAIN_COURSE_KIND, isMainCourse: true, classifiedBy: 'dish-name' };
+  }
+
+  return { category: 'other', isMainCourse: false, classifiedBy: 'default' };
+}
 
 /** Parse "7:00 a.m. -9:00 a.m." into 24-hour `HH:MM` endpoints. */
 export function parseHoursRange(text: string): { opens: string; closes: string } | null {
@@ -164,13 +234,17 @@ export function parseMenuPage(html: string): Map<string, DiningMenuSection[]> {
                   .filter(Boolean);
 
                 const href = link.attr('href');
+                const station =
+                  stationName && !EMPTY_STATION_PATTERN.test(stationName) ? stationName : null;
+                const classification = classifyMenuItem(station, itemName);
 
                 items.push({
                   id: slugify(`${name}-${period}-${itemName}`),
                   name: itemName,
-                  station: stationName || null,
+                  station,
                   tags: [...new Set(tags)],
                   url: href ? new URL(href, ORIGIN).toString() : null,
+                  ...classification,
                 });
               });
           });
@@ -233,6 +307,10 @@ export function diningDayToMediaItems(day: DiningDay, attribution: string): Medi
     .map((venue) => {
       const periods = venue.hours.map((entry) => MEAL_PERIOD_LABELS[entry.period]);
       const dishCount = venue.menus.reduce((total, section) => total + section.items.length, 0);
+      const mainCount = venue.menus.reduce(
+        (total, section) => total + section.items.filter((item) => item.isMainCourse).length,
+        0,
+      );
       const firstService = venue.hours[0];
 
       return {
@@ -246,7 +324,7 @@ export function diningDayToMediaItems(day: DiningDay, attribution: string): Medi
         endsAt: null,
         excerpt:
           dishCount > 0
-            ? `${dishCount} item${dishCount === 1 ? '' : 's'} across ${venue.menus.length} meal period${venue.menus.length === 1 ? '' : 's'}.`
+            ? `${mainCount} main course${mainCount === 1 ? '' : 's'} of ${dishCount} item${dishCount === 1 ? '' : 's'}, across ${venue.menus.length} meal period${venue.menus.length === 1 ? '' : 's'}.`
             : 'Menu not published for this date.',
         image: null,
         categories: periods,
