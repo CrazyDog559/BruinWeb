@@ -83,7 +83,15 @@ export async function fetchText(url: string, options: FetchOptions = {}): Promis
     try {
       const response = await fetch(url, {
         signal: controller.signal,
-        headers: { 'user-agent': USER_AGENT, accept: '*/*', ...headers },
+        headers: {
+          'user-agent': USER_AGENT,
+          accept: '*/*',
+          // Ordinary, honest request headers. Some WAFs reject requests that
+          // omit them entirely; we still identify ourselves truthfully as a
+          // bot in the User-Agent rather than impersonating a browser.
+          'accept-language': 'en-US,en;q=0.9',
+          ...headers,
+        },
         /**
          * Next.js patches `fetch` and, left alone, caches responses in a Data
          * Cache that Vercel restores across deploys — which would silently

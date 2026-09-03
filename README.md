@@ -7,7 +7,8 @@ gathered from their official public sources into one fast, static site.
 > an official product of the University of California, Los Angeles. All content belongs to its
 > original publishers and every item links back to them.
 
-**Live site:** _(add the production Vercel URL here)_
+**Live site:** https://bruinweb.vercel.app
+**Repository:** https://github.com/CrazyDog559/BruinWeb
 
 ---
 
@@ -122,7 +123,7 @@ Production and Preview, then redeploy.
 | # | Source | Method | Endpoint | Status | Key limitation |
 | --- | --- | --- | --- | --- | --- |
 | 1 | UCLA Dining | Public-page adapter | `dining.ucla.edu/hours/`, `/menus-at-a-glance/?date=` | **Live (build)** | No API exists — `/wp-json/` returns 401 site-wide. HTML parsing is markup-dependent. |
-| 2 | Daily Bruin | JSON API | `wp.dailybruin.com/wp-json/wp/v2/posts` | **Live (build)** | Headlines and excerpts only; full text is copyrighted. API is on the `wp.` host, not `dailybruin.com`. |
+| 2 | Daily Bruin | JSON API, RSS fallback | `wp.dailybruin.com/wp-json/wp/v2/posts`, then `/feed/` | **Live (build)** | Headlines and excerpts only; full text is copyrighted. API is on the `wp.` host, not `dailybruin.com`, and it returns 403 to cloud datacenter IPs — so production builds use the RSS feed. |
 | 3 | UCLA Radio | JSON API | `uclaradio.com/wp-json/wp/v2/posts` | **Live (build)** | Editorial posts only. No machine-readable show schedule or live-stream URL exists. |
 | 4 | UCLA Communications Board | JSON API | `uclastudentmedia.com/wp-json/wp/v2/pages` | **Live (build)** | Governance pages only — the board publishes no news feed. Storefront pages are filtered out. |
 | 5 | BruinLife | JSON API | `bruinlife.com/wp-json/wp/v2/posts` | **Live (build)** | Headlines and excerpts only. |
@@ -149,6 +150,11 @@ Full research notes, including everything that was tried and rejected, are in
   `imgproxy` URLs whose dimensions cannot be rewritten, so those load at their published size.
 - **Markup dependence.** UCLA Dining and UCLA Events are parsed from HTML. An upstream redesign will
   break them — by design they then show an "unavailable" state instead of stale or invented content.
+- **Datacenter blocking.** `wp.dailybruin.com` answers normally from a residential connection but
+  returns `403` to requests from cloud datacenter ranges, which is where Vercel builds run. The
+  adapter therefore falls back to the publisher's own public RSS feed. BruinWeb identifies itself
+  honestly in its `User-Agent` and does not attempt to disguise its requests as a browser; if a
+  publisher blocks both surfaces, the section shows an "unavailable" state.
 
 ## Architecture
 

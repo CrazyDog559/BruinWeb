@@ -27,14 +27,20 @@ export function decodeEntities(input: string): string {
 /** Strip tags and collapse whitespace, yielding safe plain text. */
 export function stripHtml(input: string | null | undefined): string {
   if (!input) return '';
-  return decodeEntities(
-    input
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]*>/g, ' '),
-  )
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    decodeEntities(
+      input
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        // Tags become spaces so block elements do not run words together.
+        .replace(/<[^>]*>/g, ' '),
+    )
+      .replace(/\s+/g, ' ')
+      // ...but an inline tag before punctuation would otherwise leave "markup ."
+      .replace(/\s+([,.;:!?)\]}])/g, '$1')
+      .replace(/([(\[{])\s+/g, '$1')
+      .trim()
+  );
 }
 
 /**

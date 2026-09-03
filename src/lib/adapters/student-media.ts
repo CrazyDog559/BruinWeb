@@ -17,12 +17,29 @@ interface WpSourceSpec {
   sourceId: Extract<SourceId, 'daily-bruin' | 'ucla-radio' | 'bruinlife'>;
   apiBase: string;
   kind: MediaKind;
+  /** Public RSS feed used when the REST API refuses the request. */
+  feedUrl?: string;
 }
 
 const WP_SOURCES: WpSourceSpec[] = [
-  { sourceId: 'daily-bruin', apiBase: 'https://wp.dailybruin.com', kind: 'article' },
-  { sourceId: 'ucla-radio', apiBase: 'https://uclaradio.com', kind: 'audio' },
-  { sourceId: 'bruinlife', apiBase: 'https://bruinlife.com', kind: 'article' },
+  {
+    sourceId: 'daily-bruin',
+    apiBase: 'https://wp.dailybruin.com',
+    kind: 'article',
+    feedUrl: 'https://wp.dailybruin.com/feed/',
+  },
+  {
+    sourceId: 'ucla-radio',
+    apiBase: 'https://uclaradio.com',
+    kind: 'audio',
+    feedUrl: 'https://uclaradio.com/feed/',
+  },
+  {
+    sourceId: 'bruinlife',
+    apiBase: 'https://bruinlife.com',
+    kind: 'article',
+    feedUrl: 'https://bruinlife.com/feed/',
+  },
 ];
 
 /** Run one WordPress-backed source. Never throws — failures become a result. */
@@ -47,6 +64,7 @@ export async function loadWordPressSource(spec: WpSourceSpec): Promise<SourceRes
       kind: spec.kind,
       attribution: config.attribution,
       perPage: BUILD.itemsPerSource,
+      feedUrl: spec.feedUrl,
     });
 
     return {

@@ -51,8 +51,8 @@ governing this content were found either permitting or forbidding automated acce
 | | |
 | --- | --- |
 | **Investigated** | `https://dailybruin.com/` |
-| **Chosen method** | Official JSON API (option a) |
-| **Endpoint** | `https://wp.dailybruin.com/wp-json/wp/v2/posts?per_page=24&_embed=1` |
+| **Chosen method** | Official JSON API (option a), with the official RSS feed as a fallback (option b) |
+| **Endpoints** | `https://wp.dailybruin.com/wp-json/wp/v2/posts?per_page=24&_embed=1`<br>fallback: `https://wp.dailybruin.com/feed/` |
 | **Update frequency** | Several times daily during the term |
 | **Attribution** | Daily Bruin |
 | **Status** | Live at build |
@@ -70,9 +70,20 @@ Pagination via `X-WP-Total` / `X-WP-TotalPages`.
 
 **robots.txt.** `wp.dailybruin.com`: only `/wp-admin/` disallowed; `/wp-json/` is permitted.
 
+**Datacenter blocking, found during deployment.** The REST API returns `200` from a residential
+connection but `403 Forbidden` from Vercel's build region (iad1) — an edge rule keyed on the
+requesting network, since the same request with the same headers succeeds elsewhere. The adapter
+therefore tries the REST API first and falls back to the publisher's own public RSS feed
+(`/feed/`, 20 items with title, link, `pubDate`, `dc:creator`, categories and an image in the
+description). BruinWeb keeps identifying itself truthfully as a bot in its `User-Agent` in both
+cases; no attempt is made to disguise requests as a browser to get around the rule. If both public
+surfaces refuse, the section shows an "unavailable" state.
+
 **Unresolved limitation.** No published API terms and no machine-readable license were found, so
 content is treated as fully copyrighted: headlines, short excerpts and metadata only, always linked
-back to the canonical `link`. Article bodies are never fetched or displayed.
+back to the canonical `link`. Article bodies are never fetched or displayed. The RSS fallback
+carries fewer items than the API and no pre-sized image variants, so cards fall back to the
+publisher's full-size image when it is in use.
 
 ---
 
@@ -352,7 +363,7 @@ itself as unavailable rather than substituting invented data.
 | Source | Method | Status |
 | --- | --- | --- |
 | UCLA Dining | Public-page adapter | Live at build |
-| Daily Bruin | JSON API | Live at build |
+| Daily Bruin | JSON API, RSS fallback | Live at build |
 | UCLA Radio | JSON API | Live at build (no schedule/stream available) |
 | UCLA Communications Board | JSON API | Live at build (governance pages only) |
 | BruinLife | JSON API | Live at build |

@@ -15,6 +15,7 @@
 import { z } from 'zod';
 
 import { fetchJson } from '@/lib/net/fetch-json';
+import { fetchFeed, type RssItem } from '@/lib/net/rss';
 import { makeId, toExcerpt, toIso, stripHtml } from '@/lib/normalize';
 import type { MediaItem, MediaKind } from '@/lib/types';
 
@@ -87,6 +88,16 @@ export interface WordPressAdapterOptions {
   kind: MediaKind;
   attribution: string;
   perPage: number;
+  /**
+   * Optional second public endpoint to try when the REST API is refused.
+   *
+   * Daily Bruin's API host answers normally from a residential connection but
+   * returns 403 to requests from cloud datacenter ranges, which is where the
+   * production build runs. The site's own RSS feed is a different, equally
+   * public surface, so we fall back to it rather than disguising the request —
+   * we keep identifying ourselves honestly in the User-Agent either way.
+   */
+  feedUrl?: string;
 }
 
 /** Widest variant we will ever need: cards are at most ~640 CSS px at 2x DPR. */
@@ -217,8 +228,37 @@ export function normalizeWpPost(post: WpPost, options: WordPressAdapterOptions):
   };
 }
 
-/** Fetch and normalize recent posts. Throws on transport failure; the caller wraps it. */
-export async function fetchWordPressPosts(options: WordPressAdapterOptions): Promise<MediaItem[]> {
+/** Normalize an RSS entry from the same publisher into the shared shape. */
+export function normalizeWpFeedItem(
+  entry: RssItem,
+  options: WordPressAdapterOptions,
+): MediaItem | null {
+  const title = stripHtml(entry.title);
+  if (!title || !entry.link) return null;
+
+  return {
+    id: makeId(options.sourceId, entry.guid ?? entry.link),
+    sourceId: options.sourceId,
+    kind: options.kind,
+    title,
+    url: entry.link,
+    publishedAt: toIso(entry.pubDate),
+    startsAt: null,
+    endsAt: null,
+    excerpt: toExcerpt(entry.description),
+    image: entry.imageUrl ? { src: entry.imageUrl, alt: title } : null,
+    categories: [...new Set(entry.categories.map((c) => stripHtml(c)).filter(Boolean))].slice(0, 4),
+    authors: entry.author ? [stripHtml(entry.author)] : [],
+    durationSeconds: null,
+    location: null,
+    badges: [],
+    attribution: options.attribution,
+    dataMode: 'build',
+  };
+}
+
+/** Fetch and normalize recent posts via the REST API. */
+async function fetchViaRestApi(options: WordPressAdapterOptions): Promise<MediaItem[]> {
   const url = `${options.apiBase}/wp-json/wp/v2/posts?per_page=${options.perPage}&_embed=1`;
   const raw = await fetchJson<unknown>(url);
 
@@ -231,5 +271,29 @@ export async function fetchWordPressPosts(options: WordPressAdapterOptions): Pro
     .map((entry) => WpPostSchema.safeParse(entry))
     .filter((result) => result.success)
     .map((result) => normalizeWpPost(result.data, options))
+    .filter((item): item is MediaItem => item !== null);
+}
+
+/**
+ * Fetch recent posts, preferring the richer REST API and falling back to the
+ * publisher's own RSS feed. Throws only when both public surfaces fail; the
+ * caller turns that into a `SourceResult`.
+ */
+export async function fetchWordPressPosts(options: WordPressAdapterOptions): Promise<MediaItem[]> {
+  try {
+    const items = await fetchViaRestApi(options);
+    if (items.length > 0 || !options.feedUrl) return items;
+  } catch (error) {
+    if (!options.feedUrl) throw error;
+    console.warn(
+      `[bruinweb] ${options.sourceId}: REST API unavailable (${
+        error instanceof Error ? error.message : 'unknown'
+      }); falling back to the RSS feed.`,
+    );
+  }
+
+  const entries = await fetchFeed(options.feedUrl);
+  return entries
+    .map((entry) => normalizeWpFeedItem(entry, options))
     .filter((item): item is MediaItem => item !== null);
 }
