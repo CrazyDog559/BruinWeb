@@ -17,6 +17,20 @@ export function Footer({ generatedAt }: { generatedAt: string }) {
             <p className="mt-3 max-w-sm text-sm text-[var(--ink-muted)]">
               {SITE.affiliationNotice}
             </p>
+
+            <p className="mt-5 max-w-sm text-sm text-[var(--ink-muted)]">
+              Designed and built by{' '}
+              <ExternalLink
+                href="https://drewwan.com"
+                publisher="Andrew Wan’s website"
+                showIcon={false}
+                className="font-semibold text-[var(--ink)] underline decoration-[var(--accent)] decoration-2 underline-offset-2 hover:text-[var(--accent)]"
+              >
+                Andrew Wan
+              </ExternalLink>
+              , who is open to new work — design, front-end or data engineering. Say hello.
+            </p>
+
             <p className="mt-4 text-xs text-[var(--ink-faint)]">
               Content snapshot built {formatDate(generatedAt)} at {formatTime(generatedAt)} PT.
             </p>
