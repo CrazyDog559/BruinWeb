@@ -14,7 +14,7 @@
 
 import { z } from 'zod';
 
-import { fetchJson } from '@/lib/net/fetch-json';
+import { fetchJson, fetchText } from '@/lib/net/fetch-json';
 import { fetchFeed, type RssItem } from '@/lib/net/rss';
 import { makeId, toExcerpt, toIso, stripHtml } from '@/lib/normalize';
 import type { MediaItem, MediaKind } from '@/lib/types';
@@ -98,6 +98,13 @@ export interface WordPressAdapterOptions {
    * we keep identifying ourselves honestly in the User-Agent either way.
    */
   feedUrl?: string;
+  /**
+   * Optional last resort: a public page that embeds the same WordPress post
+   * objects as structured data. Daily Bruin's reader-facing site is a headless
+   * Next.js frontend whose `__NEXT_DATA__` payload carries the very objects the
+   * REST API would have returned, served from a host that is not refusing us.
+   */
+  embeddedPageUrl?: string;
 }
 
 /** Widest variant we will ever need: cards are at most ~640 CSS px at 2x DPR. */
@@ -257,6 +264,62 @@ export function normalizeWpFeedItem(
   };
 }
 
+/**
+ * Pull WordPress post objects out of a Next.js `__NEXT_DATA__` payload.
+ *
+ * The payload nests posts under several editorial slots (`posts.aStory`,
+ * `mappedITN`, `multimediaPosts`, …), so rather than hard-coding slot names —
+ * which are layout decisions that change — we walk the tree for anything with
+ * the shape of a post and deduplicate by id.
+ */
+export function extractEmbeddedWpPosts(html: string): unknown[] {
+  const match = /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/.exec(
+    html,
+  );
+  if (!match) throw new Error('__NEXT_DATA__ payload not found');
+
+  const payload: unknown = JSON.parse(match[1]);
+  const found = new Map<number, unknown>();
+
+  const walk = (node: unknown, depth: number): void => {
+    if (depth > 8 || node === null || typeof node !== 'object') return;
+
+    if (Array.isArray(node)) {
+      for (const entry of node) walk(entry, depth + 1);
+      return;
+    }
+
+    const record = node as Record<string, unknown>;
+    if (
+      typeof record.id === 'number' &&
+      typeof record.link === 'string' &&
+      typeof record.title === 'object'
+    ) {
+      // The same post appears in several slots, sometimes trimmed down. Keep
+      // the richest copy so excerpts and images are not lost to a sparse one.
+      const existing = found.get(record.id) as Record<string, unknown> | undefined;
+      if (!existing || Object.keys(record).length > Object.keys(existing).length) {
+        found.set(record.id, record);
+      }
+    }
+
+    for (const value of Object.values(record)) walk(value, depth + 1);
+  };
+
+  walk(payload, 0);
+  return [...found.values()];
+}
+
+/** Validate and normalize a batch of raw post objects. */
+function normalizeMany(raw: unknown[], options: WordPressAdapterOptions): MediaItem[] {
+  // Validate per item so one malformed post cannot discard the whole feed.
+  return raw
+    .map((entry) => WpPostSchema.safeParse(entry))
+    .filter((result) => result.success)
+    .map((result) => normalizeWpPost(result.data, options))
+    .filter((item): item is MediaItem => item !== null);
+}
+
 /** Fetch and normalize recent posts via the REST API. */
 async function fetchViaRestApi(options: WordPressAdapterOptions): Promise<MediaItem[]> {
   const url = `${options.apiBase}/wp-json/wp/v2/posts?per_page=${options.perPage}&_embed=1`;
@@ -266,34 +329,64 @@ async function fetchViaRestApi(options: WordPressAdapterOptions): Promise<MediaI
     throw new Error('Expected an array of posts');
   }
 
-  // Validate per-item so one malformed post cannot discard the whole feed.
-  return raw
-    .map((entry) => WpPostSchema.safeParse(entry))
-    .filter((result) => result.success)
-    .map((result) => normalizeWpPost(result.data, options))
-    .filter((item): item is MediaItem => item !== null);
+  return normalizeMany(raw, options);
 }
 
-/**
- * Fetch recent posts, preferring the richer REST API and falling back to the
- * publisher's own RSS feed. Throws only when both public surfaces fail; the
- * caller turns that into a `SourceResult`.
- */
-export async function fetchWordPressPosts(options: WordPressAdapterOptions): Promise<MediaItem[]> {
-  try {
-    const items = await fetchViaRestApi(options);
-    if (items.length > 0 || !options.feedUrl) return items;
-  } catch (error) {
-    if (!options.feedUrl) throw error;
-    console.warn(
-      `[bruinweb] ${options.sourceId}: REST API unavailable (${
-        error instanceof Error ? error.message : 'unknown'
-      }); falling back to the RSS feed.`,
-    );
-  }
-
+/** Fetch via the publisher's RSS feed. */
+async function fetchViaFeed(options: WordPressAdapterOptions): Promise<MediaItem[]> {
+  if (!options.feedUrl) throw new Error('No feed configured');
   const entries = await fetchFeed(options.feedUrl);
   return entries
     .map((entry) => normalizeWpFeedItem(entry, options))
     .filter((item): item is MediaItem => item !== null);
+}
+
+/** Fetch via structured data embedded in a public page. */
+async function fetchViaEmbeddedPage(options: WordPressAdapterOptions): Promise<MediaItem[]> {
+  if (!options.embeddedPageUrl) throw new Error('No embedded page configured');
+  const html = await fetchText(options.embeddedPageUrl);
+  return normalizeMany(extractEmbeddedWpPosts(html), options);
+}
+
+/**
+ * Fetch recent posts from whichever public surface answers.
+ *
+ * Order of preference: the REST API (richest — includes sized image variants),
+ * then the publisher's RSS feed, then structured data embedded in a public
+ * page. Every one of these is a surface the publisher serves openly; the
+ * fallbacks exist because some hosts refuse cloud datacenter ranges, which is
+ * where the production build runs. Throws only when all configured surfaces
+ * fail, and the caller turns that into a `SourceResult`.
+ */
+export async function fetchWordPressPosts(options: WordPressAdapterOptions): Promise<MediaItem[]> {
+  const attempts: Array<{ label: string; run: () => Promise<MediaItem[]> }> = [
+    { label: 'REST API', run: () => fetchViaRestApi(options) },
+    ...(options.feedUrl ? [{ label: 'RSS feed', run: () => fetchViaFeed(options) }] : []),
+    ...(options.embeddedPageUrl
+      ? [{ label: 'embedded page data', run: () => fetchViaEmbeddedPage(options) }]
+      : []),
+  ];
+
+  let lastError: unknown = new Error('No retrieval method configured');
+
+  for (const [index, attempt] of attempts.entries()) {
+    try {
+      const items = await attempt.run();
+      if (items.length > 0) return items;
+      lastError = new Error(`${attempt.label} returned no items`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    const next = attempts[index + 1];
+    if (next) {
+      console.warn(
+        `[bruinweb] ${options.sourceId}: ${attempt.label} unavailable (${
+          lastError instanceof Error ? lastError.message : 'unknown'
+        }); trying ${next.label}.`,
+      );
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('All retrieval methods failed');
 }

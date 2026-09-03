@@ -51,8 +51,8 @@ governing this content were found either permitting or forbidding automated acce
 | | |
 | --- | --- |
 | **Investigated** | `https://dailybruin.com/` |
-| **Chosen method** | Official JSON API (option a), with the official RSS feed as a fallback (option b) |
-| **Endpoints** | `https://wp.dailybruin.com/wp-json/wp/v2/posts?per_page=24&_embed=1`<br>fallback: `https://wp.dailybruin.com/feed/` |
+| **Chosen method** | Official JSON API (a), falling back to the official RSS feed (b), then to structured data embedded in the public page (c) |
+| **Endpoints** | `https://wp.dailybruin.com/wp-json/wp/v2/posts?per_page=24&_embed=1`<br>then `https://wp.dailybruin.com/feed/`<br>then `https://dailybruin.com/` (`__NEXT_DATA__`) |
 | **Update frequency** | Several times daily during the term |
 | **Attribution** | Daily Bruin |
 | **Status** | Live at build |
@@ -72,18 +72,27 @@ Pagination via `X-WP-Total` / `X-WP-TotalPages`.
 
 **Datacenter blocking, found during deployment.** The REST API returns `200` from a residential
 connection but `403 Forbidden` from Vercel's build region (iad1) — an edge rule keyed on the
-requesting network, since the same request with the same headers succeeds elsewhere. The adapter
-therefore tries the REST API first and falls back to the publisher's own public RSS feed
-(`/feed/`, 20 items with title, link, `pubDate`, `dc:creator`, categories and an image in the
-description). BruinWeb keeps identifying itself truthfully as a bot in its `User-Agent` in both
-cases; no attempt is made to disguise requests as a browser to get around the rule. If both public
-surfaces refuse, the section shows an "unavailable" state.
+requesting network, since the identical request succeeds elsewhere. The first fallback, the RSS feed
+at `/feed/`, returns `403` from that region too: the whole `wp.dailybruin.com` host refuses it.
+
+The adapter therefore has a third step. `dailybruin.com` — the reader-facing headless Next.js site,
+a different host — embeds a `__NEXT_DATA__` payload containing the *same* WordPress post objects the
+REST API would have returned (`id`, `link`, `slug`, `date`, `title`, `excerpt`, `categories`,
+`coauthors`, `_embedded`), 34 of them across the page's editorial slots. Those objects go through
+the very same `WpPostSchema` and `normalizeWpPost` used for the API, so the fallback adds no parallel
+normalization path. Posts are deduplicated by id, keeping the richest copy, since a trimmed version
+of the same story appears in several slots.
+
+BruinWeb keeps identifying itself truthfully as a bot in its `User-Agent` at every step; no attempt
+is made to disguise requests as a browser in order to get around an edge rule. If every public
+surface refuses, the section shows an "unavailable" state rather than stale or invented content.
 
 **Unresolved limitation.** No published API terms and no machine-readable license were found, so
 content is treated as fully copyrighted: headlines, short excerpts and metadata only, always linked
-back to the canonical `link`. Article bodies are never fetched or displayed. The RSS fallback
-carries fewer items than the API and no pre-sized image variants, so cards fall back to the
-publisher's full-size image when it is in use.
+back to the canonical `link`. Article bodies are never fetched or displayed. Neither fallback
+carries `media_details.sizes`, so when one is in use the cards hot-link the publisher's full-size
+image instead of a right-sized variant, and the embedded payload has no `date_gmt` — its `date` is
+site-local wall clock, which `toIso` resolves in UCLA's time zone.
 
 ---
 
@@ -363,7 +372,7 @@ itself as unavailable rather than substituting invented data.
 | Source | Method | Status |
 | --- | --- | --- |
 | UCLA Dining | Public-page adapter | Live at build |
-| Daily Bruin | JSON API, RSS fallback | Live at build |
+| Daily Bruin | JSON API → RSS → embedded page data | Live at build |
 | UCLA Radio | JSON API | Live at build (no schedule/stream available) |
 | UCLA Communications Board | JSON API | Live at build (governance pages only) |
 | BruinLife | JSON API | Live at build |

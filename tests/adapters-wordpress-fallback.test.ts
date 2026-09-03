@@ -17,9 +17,55 @@ vi.mock('@/lib/net/rss', () => ({
   fetchFeed: vi.fn(),
 }));
 
-const { fetchJson } = await import('@/lib/net/fetch-json');
+const { fetchJson, fetchText } = await import('@/lib/net/fetch-json');
 const { fetchFeed } = await import('@/lib/net/rss');
-const { fetchWordPressPosts, normalizeWpFeedItem } = await import('@/lib/adapters/wordpress');
+const { fetchWordPressPosts, normalizeWpFeedItem, extractEmbeddedWpPosts } =
+  await import('@/lib/adapters/wordpress');
+
+/**
+ * A miniature of the real payload: posts live under several editorial slots and
+ * the same post can appear in more than one of them.
+ */
+const NEXT_DATA = {
+  props: {
+    pageProps: {
+      posts: {
+        aStory: [
+          {
+            id: 101,
+            link: 'https://example.test/lead-story/',
+            slug: 'lead-story',
+            date: '2026-09-02T09:15:00',
+            title: { rendered: 'Lead story from the embedded payload' },
+            excerpt: { rendered: '<p>An embedded excerpt.</p>' },
+          },
+        ],
+        bStory: [
+          {
+            id: 101,
+            link: 'https://example.test/lead-story/',
+            slug: 'lead-story',
+            title: { rendered: 'Lead story from the embedded payload' },
+          },
+          {
+            id: 102,
+            link: 'https://example.test/second-story/',
+            slug: 'second-story',
+            date: '2026-09-01T08:00:00',
+            title: { rendered: 'Second story from the embedded payload' },
+          },
+        ],
+      },
+      classifieds: [{ id: 'not-a-post', heading: 'ignored' }],
+    },
+  },
+};
+
+function pageWithPayload(data: unknown): string {
+  return `<html><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(
+    data,
+  )}</script></body></html>`;
+}
 
 const OPTIONS: WordPressAdapterOptions = {
   sourceId: 'daily-bruin',
@@ -43,6 +89,7 @@ const FEED_ENTRY = {
 
 beforeEach(() => {
   vi.mocked(fetchJson).mockReset();
+  vi.mocked(fetchText).mockReset();
   vi.mocked(fetchFeed).mockReset();
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
@@ -127,5 +174,62 @@ describe('fetchWordPressPosts fallback', () => {
     vi.mocked(fetchFeed).mockRejectedValue(new Error('HTTP 503 Service Unavailable'));
 
     await expect(fetchWordPressPosts(OPTIONS)).rejects.toThrow('HTTP 503');
+  });
+});
+
+describe('extractEmbeddedWpPosts', () => {
+  it('collects posts from every slot and deduplicates by id', () => {
+    const posts = extractEmbeddedWpPosts(pageWithPayload(NEXT_DATA)) as Array<{ id: number }>;
+
+    expect(posts).toHaveLength(2);
+    expect(posts.map((post) => post.id).sort()).toEqual([101, 102]);
+  });
+
+  it('ignores objects that do not have the shape of a post', () => {
+    const posts = extractEmbeddedWpPosts(pageWithPayload(NEXT_DATA)) as Array<{ id: unknown }>;
+
+    expect(posts.some((post) => post.id === 'not-a-post')).toBe(false);
+  });
+
+  it('throws a clear error when the payload is absent', () => {
+    expect(() => extractEmbeddedWpPosts('<html><body>no payload here</body></html>')).toThrow(
+      '__NEXT_DATA__',
+    );
+  });
+});
+
+describe('fetchWordPressPosts three-step chain', () => {
+  const withEmbedded = { ...OPTIONS, embeddedPageUrl: 'https://example.test/' };
+
+  it('falls through REST and RSS to the embedded page payload', async () => {
+    vi.mocked(fetchJson).mockRejectedValue(new Error('HTTP 403 Forbidden'));
+    vi.mocked(fetchFeed).mockRejectedValue(new Error('HTTP 403 Forbidden'));
+    vi.mocked(fetchText).mockResolvedValue(pageWithPayload(NEXT_DATA));
+
+    const items = await fetchWordPressPosts(withEmbedded);
+
+    expect(fetchText).toHaveBeenCalledWith('https://example.test/');
+    expect(items).toHaveLength(2);
+    expect(items[0].title).toBe('Lead story from the embedded payload');
+    expect(items[0].excerpt).toBe('An embedded excerpt.');
+    expect(items[0].dataMode).toBe('build');
+  });
+
+  it('stops at the RSS feed when that succeeds', async () => {
+    vi.mocked(fetchJson).mockRejectedValue(new Error('HTTP 403 Forbidden'));
+    vi.mocked(fetchFeed).mockResolvedValue([FEED_ENTRY]);
+
+    const items = await fetchWordPressPosts(withEmbedded);
+
+    expect(items).toHaveLength(1);
+    expect(fetchText).not.toHaveBeenCalled();
+  });
+
+  it('throws the last error when every surface fails', async () => {
+    vi.mocked(fetchJson).mockRejectedValue(new Error('HTTP 403 Forbidden'));
+    vi.mocked(fetchFeed).mockRejectedValue(new Error('HTTP 403 Forbidden'));
+    vi.mocked(fetchText).mockRejectedValue(new Error('HTTP 500 Server Error'));
+
+    await expect(fetchWordPressPosts(withEmbedded)).rejects.toThrow('HTTP 500');
   });
 });

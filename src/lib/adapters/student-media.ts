@@ -19,6 +19,8 @@ interface WpSourceSpec {
   kind: MediaKind;
   /** Public RSS feed used when the REST API refuses the request. */
   feedUrl?: string;
+  /** Public page embedding the same post objects, used as a last resort. */
+  embeddedPageUrl?: string;
 }
 
 const WP_SOURCES: WpSourceSpec[] = [
@@ -27,6 +29,9 @@ const WP_SOURCES: WpSourceSpec[] = [
     apiBase: 'https://wp.dailybruin.com',
     kind: 'article',
     feedUrl: 'https://wp.dailybruin.com/feed/',
+    // wp.dailybruin.com refuses cloud datacenter ranges outright, so production
+    // builds land here: the reader-facing site embeds the same post objects.
+    embeddedPageUrl: 'https://dailybruin.com/',
   },
   {
     sourceId: 'ucla-radio',
@@ -65,6 +70,7 @@ export async function loadWordPressSource(spec: WpSourceSpec): Promise<SourceRes
       attribution: config.attribution,
       perPage: BUILD.itemsPerSource,
       feedUrl: spec.feedUrl,
+      embeddedPageUrl: spec.embeddedPageUrl,
     });
 
     return {
