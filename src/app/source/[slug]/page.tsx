@@ -112,7 +112,7 @@ export default async function SourcePage({ params }: { params: Promise<{ slug: s
           publisher={source.name}
           emptyMessage={
             result?.error
-              ? `${source.name} could not be retrieved when this page was built. Use “Check for new” above — your browser is not a datacenter, so the publisher may answer it.`
+              ? `${source.name} could not be retrieved when this page was built, and refreshing from your browser did not return anything either. Try “Check for new” above.`
               : undefined
           }
         />

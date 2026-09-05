@@ -5,12 +5,12 @@
  * server rendering on request. Three mechanisms, in order of preference:
  *
  *   1. `browser`  — the reader's own browser refetches the publisher's public
- *                   API directly. Only for endpoints that send CORS headers,
- *                   need no credential, and permit the usage. This is the only
- *                   mechanism that is fresh *between* builds, and it is what
- *                   makes Daily Bruin work at all on the hosted build: the
- *                   publisher refuses datacenter IPs, but a reader's browser is
- *                   not one.
+ *                   API directly, automatically, when the page is opened. Only
+ *                   for endpoints that send CORS headers, need no credential,
+ *                   and permit the usage. This is the only mechanism that is
+ *                   fresh *between* builds, and it is what makes Daily Bruin
+ *                   work at all on the hosted build: the publisher refuses
+ *                   datacenter IPs, but a reader's browser is not one.
  *   2. `build`    — retrieved during `next build`. A scheduled GitHub Actions
  *                   workflow pings a Vercel Deploy Hook so this happens on a
  *                   timetable, not only when someone pushes code.
@@ -28,7 +28,7 @@ export const REFRESH_STRATEGIES = ['browser', 'build', 'none'] as const;
 export type RefreshStrategy = (typeof REFRESH_STRATEGIES)[number];
 
 export const REFRESH_STRATEGY_LABELS: Record<RefreshStrategy, string> = {
-  browser: 'Live in your browser + scheduled rebuild',
+  browser: 'Refreshes when you open the page',
   build: 'Scheduled rebuild',
   none: 'Not fetched',
 };

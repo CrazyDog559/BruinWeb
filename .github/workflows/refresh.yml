@@ -53,6 +53,8 @@ jobs:
     name: Trigger a rebuild
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      rebuilt: ${{ steps.hook.outputs.configured }}
     steps:
       - name: Decide whether this tick should rebuild
         id: gate
@@ -87,19 +89,31 @@ jobs:
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # The rebuild is now a top-up rather than the only way content changes:
+      # every browser-refreshable source updates itself when a reader opens the
+      # page. So a missing secret is reported and skipped on a scheduled run —
+      # failing 40 times a day would be noise, not a signal — while a run someone
+      # started by hand still fails loudly, because they are asking it to work.
       - name: Check the deploy hook is configured
+        id: hook
         if: steps.gate.outputs.run == 'true'
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
           if [ -z "${HOOK:-}" ]; then
-            echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. See README.md → Scheduled refresh."
-            exit 1
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::VERCEL_DEPLOY_HOOK_URL is not set, so no rebuild was triggered. Browser-side refresh still keeps Daily Bruin, UCLA Radio, BruinLife, the Communications Board and Athletics current. See README.md → Scheduled refresh."
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error::You asked for a refresh, but VERCEL_DEPLOY_HOOK_URL is not configured."
+              exit 1
+            fi
+            exit 0
           fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
           echo "Deploy hook is configured."
 
       - name: Ping the Vercel deploy hook
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate.outputs.run == 'true' && steps.hook.outputs.configured == 'true'
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -138,6 +152,7 @@ jobs:
             echo "### BruinWeb content refresh"
             echo ""
             echo "- Decision: \`${{ steps.gate.outputs.run }}\`"
+            echo "- Deploy hook configured: \`${{ steps.hook.outputs.configured || 'n/a' }}\`"
             echo "- Trigger: \`${{ github.event_name }}\`"
             if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
               echo "- Reason: ${REASON:-manual refresh}"
@@ -148,7 +163,8 @@ jobs:
   smoke:
     name: Production smoke test
     needs: refresh
-    if: needs.refresh.result == 'success'
+    # Only worth running when a rebuild was actually triggered.
+    if: needs.refresh.result == 'success' && needs.refresh.outputs.rebuilt == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

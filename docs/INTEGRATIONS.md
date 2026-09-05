@@ -485,9 +485,17 @@ itself as unavailable rather than substituting invented data.
 ## Automatic refresh
 
 Retrieval strategy per source, as declared in `src/lib/config/sources.ts`. "Browser" means
-the reader's own browser can refetch the publisher directly; every such endpoint was
-verified on 2026-09-03 to answer with `access-control-allow-origin` reflecting the
-requesting origin, with no credential involved.
+the reader's own browser refetches the publisher directly, automatically, whenever the page
+is opened — so those sections are current on every visit rather than once per deployment.
+Every such endpoint was verified on 2026-09-03 to answer with `access-control-allow-origin`
+reflecting the requesting origin, with no credential involved.
+
+The four build-only sources were each checked and cannot be read from a browser:
+`dining.ucla.edu`, `uclaclubsports.com`, `www.ucla.edu/events` and
+`international.ucla.edu` send no `access-control-allow-origin` header. UCLA Dining has no
+JSON API of any kind — its menus are rendered server-side by the Jamix WordPress plugin,
+with no client-side call for a browser to imitate — so a scheduled rebuild is the only way
+to refresh it without introducing a proxy, which would mean a backend.
 
 | Source | Strategy | Expected | Stale after | Notes |
 | --- | --- | --- | --- | --- |

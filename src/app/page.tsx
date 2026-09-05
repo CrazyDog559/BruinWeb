@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import { Container, Section } from '@/components/layout/Section';
+import { LiveRiver } from '@/components/media/LiveRiver';
 import { MediaCard } from '@/components/media/MediaCard';
 import { SITE, FEED } from '@/lib/config/site';
 import { NAV_SOURCES, sourceHref } from '@/lib/config/sources';
@@ -24,14 +25,16 @@ function todayItems(items: MediaItem[]): MediaItem[] {
 }
 
 export default async function HomePage() {
-  const { items, results } = await getSnapshot();
+  const { items, results, generatedAt } = await getSnapshot();
 
   const featured = pickFeatured(items);
   const [lead, ...rest] = featured;
   const today = todayItems(items).slice(0, 4);
 
   const featuredIds = new Set(featured.map((item) => item.id));
-  const latest = items.filter((item) => !featuredIds.has(item.id)).slice(0, FEED.homepageLatest);
+  const latest = items
+    .filter((item) => !featuredIds.has(item.id))
+    .slice(0, FEED.homepageLatest * 2);
 
   const liveSources = NAV_SOURCES.filter((source) => results[source.id]?.status === 'ok').length;
 
@@ -115,17 +118,11 @@ export default async function HomePage() {
 
         <Section
           title="Latest"
-          description="Newest first, deduplicated across sources."
+          description="Newest first, deduplicated across sources, and refreshed in your browser on arrival."
           href="/browse"
           linkLabel="Browse all"
         >
-          <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {latest.map((item) => (
-              <li key={item.id} className="min-w-0">
-                <MediaCard item={item} />
-              </li>
-            ))}
-          </ul>
+          <LiveRiver items={latest} builtAt={generatedAt} limit={FEED.homepageLatest} />
         </Section>
 
         <Section

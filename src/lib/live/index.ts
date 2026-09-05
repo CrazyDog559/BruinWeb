@@ -17,6 +17,11 @@
  *     module, so a refreshed item cannot be shaped differently from a built one.
  *   - Failure is silent-but-visible: the built content stays on screen and the
  *     UI says the refresh did not work. It never blanks a section.
+ *
+ * Refresh happens automatically when a page is opened, so a reader sees current
+ * content without pressing anything and without waiting for a rebuild. A short
+ * per-tab throttle keeps navigating around the site from re-hitting publishers
+ * on every click.
  */
 
 import {
@@ -128,4 +133,73 @@ export async function refreshSource(id: LiveSourceId): Promise<LiveResult> {
       : normalizeMany(Array.isArray(payload) ? payload : [], wordPressOptions(id));
 
   return { items: sortByDateDesc(items), retrievedAt: new Date().toISOString() };
+}
+
+/**
+ * How long a browser refresh counts as current within one tab, in milliseconds.
+ *
+ * Long enough that moving between pages does not re-hit a publisher on every
+ * click; short enough that opening the site again shortly afterwards still gets
+ * something new. A page opened in a fresh tab always refreshes, because
+ * sessionStorage starts empty there.
+ */
+export const LIVE_THROTTLE_MS = 3 * 60 * 1000;
+
+const THROTTLE_PREFIX = 'bruinweb:live:';
+
+/**
+ * Whether this tab already refreshed a source recently.
+ *
+ * Storage can throw outright — Safari in private mode, or a browser configured
+ * to block site data — so every access is guarded and a failure means "not
+ * throttled", which errs toward fetching rather than showing stale content.
+ */
+export function shouldRefresh(id: LiveSourceId, now: number = Date.now()): boolean {
+  try {
+    const raw = sessionStorage.getItem(`${THROTTLE_PREFIX}${id}`);
+    if (!raw) return true;
+    const at = Number(raw);
+    if (!Number.isFinite(at)) return true;
+    return now - at > LIVE_THROTTLE_MS;
+  } catch {
+    return true;
+  }
+}
+
+export function markRefreshed(id: LiveSourceId, now: number = Date.now()): void {
+  try {
+    sessionStorage.setItem(`${THROTTLE_PREFIX}${id}`, String(now));
+  } catch {
+    // Not being able to remember is harmless; it just means we may refetch.
+  }
+}
+
+/**
+ * Refresh several sources at once, tolerating individual failures.
+ *
+ * Used by the homepage river, which mixes every browser-refreshable source.
+ * Returns whatever succeeded plus the ids that did not, so the caller can merge
+ * live items over built ones without discarding a section whose publisher was
+ * briefly unreachable.
+ */
+export async function refreshMany(
+  ids: LiveSourceId[],
+): Promise<{ items: MediaItem[]; refreshed: LiveSourceId[]; failed: LiveSourceId[] }> {
+  const settled = await Promise.allSettled(ids.map((id) => refreshSource(id)));
+
+  const items: MediaItem[] = [];
+  const refreshed: LiveSourceId[] = [];
+  const failed: LiveSourceId[] = [];
+
+  settled.forEach((outcome, index) => {
+    const id = ids[index];
+    if (outcome.status === 'fulfilled' && outcome.value.items.length > 0) {
+      items.push(...outcome.value.items);
+      refreshed.push(id);
+    } else {
+      failed.push(id);
+    }
+  });
+
+  return { items, refreshed, failed };
 }

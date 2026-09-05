@@ -258,8 +258,11 @@ BruinWeb has no backend, so "current" comes from three mechanisms rather than a
 server rendering on request. Which one a section uses is declared in the source
 registry (`src/lib/config/sources.ts`, field `refresh`), not decided in a component.
 
-**1. Live in the reader's browser.** Where a publisher's public API sends CORS headers
-and needs no credential, the page can refetch it directly with a "Check for new" button.
+**1. Live in the reader's browser — automatic, on every visit.** Where a publisher's
+public API sends CORS headers and needs no credential, the page refetches it directly when
+it opens. No button, no deployment, no waiting: open the site and those sections are
+current. A "Check for new" button is there to look again on demand.
+
 This is the only mechanism that is fresh *between* builds, and for the Daily Bruin it is
 the only one that works at all — that publisher refuses cloud datacenter networks, but a
 reader's browser is not one. Verified CORS-enabled on 2026-09-03:
@@ -277,9 +280,23 @@ never attached. The browser and the build share one normalizer
 (`*-normalize.ts` modules, which carry no Node dependency), so a refreshed item cannot be
 shaped differently from a built one.
 
+The built content renders first, so the page is useful before any request finishes and
+with JavaScript off; the refresh replaces it silently only once it succeeds, and a failure
+leaves the built content exactly where it was. A three-minute per-tab throttle
+(`sessionStorage`) keeps clicking around the site from re-hitting publishers on every
+page — a freshly opened tab always refreshes.
+
+**What this cannot cover.** Dining, Esports, Events and the lecture feeds send no CORS
+headers, and UCLA Dining has no JSON API at all — its menus are rendered server-side by a
+WordPress plugin, so there is nothing for a browser to call. Those four depend on the
+scheduled rebuild below.
+
 **2. Scheduled rebuild.** Everything else is retrieved during `next build`, and
 `.github/workflows/refresh.yml` pings a Vercel Deploy Hook on a timetable so that happens
-without anyone pushing code. No commit is created to trigger a deploy.
+without anyone pushing code. No commit is created to trigger a deploy. Since the busiest
+sources now refresh themselves in the browser, this is a top-up rather than the only way
+content changes — if the deploy hook is never configured, the site still updates on every
+visit for those five sources, and only dining, esports, events and lectures go stale.
 
 **3. Fallback.** Each build-time source persists a validated artifact under
 `.next/cache/`, which Vercel restores between deployments. When a publisher is briefly
@@ -322,9 +339,15 @@ deployments — so it is never committed:
    Name it exactly `VERCEL_DEPLOY_HOOK_URL` and paste the URL as the value.
 3. Optionally run **Actions → Refresh content → Run workflow** to confirm it works.
 
-Until that secret exists the workflow fails loudly with a pointer back here, rather than
-silently pinging nothing. Note that GitHub disables scheduled workflows on repositories
-with no activity for 60 days; a single commit or a manual run re-enables them.
+Until that secret exists a scheduled run logs a warning and skips — failing dozens of times
+a day would be noise, given the browser refresh already covers the busiest sources — while
+a run you start by hand fails outright, because you asked it to work.
+
+Two caveats worth knowing about GitHub's scheduler: it disables scheduled workflows on
+repositories with no activity for 60 days (a commit or a manual run re-enables them), and
+`schedule` is best-effort rather than guaranteed. On this repository the 30-minute cron has
+been delivering roughly every 3–4 hours in practice, which is another reason the
+browser-side refresh carries the freshness that matters.
 
 ### Adding another source adapter
 

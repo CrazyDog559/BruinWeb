@@ -196,18 +196,20 @@ export default async function StatusPage() {
               In your browser
             </h3>
             <p className="mt-1 text-sm text-[var(--ink-muted)]">
-              Sources whose public API allows cross-origin reads can be refreshed on demand from the
-              page&rsquo;s own tab, with no credential involved. That is fresher than any rebuild,
-              and it is how the Daily Bruin section carries content at all — the publisher refuses
-              cloud datacenters, but not people.
+              Five sources refresh themselves when you open the page — Daily Bruin, UCLA Radio,
+              BruinLife, the Communications Board and Athletics. Their public APIs allow
+              cross-origin reads and need no credential, so your browser fetches them directly. No
+              deployment is involved, and it is how the Daily Bruin section carries content at all:
+              that publisher refuses cloud datacenters, but not people.
             </p>
           </div>
           <div>
             <h3 className="font-semibold">On a schedule</h3>
             <p className="mt-1 text-sm text-[var(--ink-muted)]">
-              A GitHub Actions workflow pings a Vercel deploy hook on a timetable, so the site is
-              rebuilt with current data without anyone pushing code. Dining drives the cadence:
-              every 30 minutes through Pacific dining hours, hourly overnight.
+              Dining, Esports, Events and the lecture feeds send no CORS headers, so a browser
+              cannot read them and they can only be retrieved during a build. A GitHub Actions
+              workflow pings a Vercel deploy hook on a timetable to keep those current without
+              anyone pushing code.
             </p>
           </div>
           <div>

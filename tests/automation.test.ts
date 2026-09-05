@@ -59,8 +59,18 @@ describe('scheduled refresh workflow', () => {
     expect(yaml).toMatch(/needs:\s*refresh/);
   });
 
-  it('fails loudly when the secret is missing instead of pinging nothing', () => {
-    expect(yaml).toContain('::error::VERCEL_DEPLOY_HOOK_URL is not set');
+  it('reports a missing secret rather than pinging nothing', () => {
+    // A scheduled run warns and skips — the browser-side refresh keeps the main
+    // sources current, so failing 40 times a day would be noise. A run someone
+    // started by hand still fails, because they asked for it to work.
+    expect(yaml).toContain('::warning::VERCEL_DEPLOY_HOOK_URL is not set');
+    expect(yaml).toContain('::error::You asked for a refresh');
+    expect(yaml).toMatch(/github\.event_name.*workflow_dispatch/);
+  });
+
+  it('only pings and smoke-tests when the hook is actually configured', () => {
+    expect(yaml).toContain("steps.hook.outputs.configured == 'true'");
+    expect(yaml).toContain("needs.refresh.outputs.rebuilt == 'true'");
   });
 });
 

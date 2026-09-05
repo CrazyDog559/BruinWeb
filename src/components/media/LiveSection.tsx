@@ -1,28 +1,32 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, RefreshCw } from 'lucide-react';
 
 import { MediaCard } from '@/components/media/MediaCard';
 import { ageInMinutes, formatAgePhrase } from '@/lib/config/refresh';
-import { refreshSource, type LiveSourceId } from '@/lib/live';
+import { markRefreshed, refreshSource, shouldRefresh, type LiveSourceId } from '@/lib/live';
 import { formatDate, formatTime } from '@/lib/normalize';
 import type { MediaItem } from '@/lib/types';
 
 type State =
   | { phase: 'built' }
   | { phase: 'loading' }
-  | { phase: 'live'; items: MediaItem[]; at: string; added: number }
-  | { phase: 'failed'; message: string };
+  | { phase: 'live'; items: MediaItem[]; at: string; added: number; announce: boolean }
+  | { phase: 'failed'; message: string; quiet: boolean };
 
 /**
  * A section that can go and get something newer than the build.
  *
  * The built content renders on the server and is what a reader sees first, so
- * the section is useful with JavaScript disabled and never flashes empty. The
- * refresh replaces it only on success; a failure leaves the built content
- * exactly where it was and says so, because a stale story is far better than a
- * blank column.
+ * the section is useful with JavaScript disabled and never flashes empty. A
+ * refresh then runs automatically on open, which is what keeps this section
+ * current without a rebuild — the reader does not have to press anything, and
+ * the button is there to check again.
+ *
+ * The refresh replaces the content only on success; a failure leaves the built
+ * content exactly where it was and says so, because a stale story is far better
+ * than a blank column.
  */
 export function LiveSection({
   sourceId,
@@ -40,31 +44,67 @@ export function LiveSection({
 }) {
   const [state, setState] = useState<State>({ phase: 'built' });
 
-  const onRefresh = useCallback(async () => {
-    setState({ phase: 'loading' });
-    try {
-      const result = await refreshSource(sourceId);
-      if (result.items.length === 0) {
-        setState({ phase: 'failed', message: `${publisher} returned no items.` });
-        return;
+  const run = useCallback(
+    async (mode: 'auto' | 'manual') => {
+      // Only a refresh the reader asked for shows a spinner. The automatic one
+      // stays invisible until it has something better to show, so opening a
+      // page never flashes a loading state over content that is already there.
+      if (mode === 'manual') setState({ phase: 'loading' });
+      try {
+        const result = await refreshSource(sourceId);
+        markRefreshed(sourceId);
+
+        if (result.items.length === 0) {
+          setState({
+            phase: 'failed',
+            message: `${publisher} returned no items.`,
+            quiet: mode === 'auto',
+          });
+          return;
+        }
+
+        const known = new Set(items.map((item) => item.url));
+        setState({
+          phase: 'live',
+          items: result.items,
+          at: result.retrievedAt,
+          added: result.items.filter((item) => !known.has(item.url)).length,
+          announce: mode === 'manual',
+        });
+      } catch (error) {
+        setState({
+          phase: 'failed',
+          message:
+            error instanceof Error && error.name === 'AbortError'
+              ? `${publisher} took too long to respond.`
+              : `Could not reach ${publisher} from your browser.`,
+          // An automatic attempt that fails should not shout at a reader who
+          // never asked for it — the built content is still perfectly readable,
+          // and the timestamp already says how old it is.
+          quiet: mode === 'auto',
+        });
       }
-      const known = new Set(items.map((item) => item.url));
-      setState({
-        phase: 'live',
-        items: result.items,
-        at: result.retrievedAt,
-        added: result.items.filter((item) => !known.has(item.url)).length,
-      });
-    } catch (error) {
-      setState({
-        phase: 'failed',
-        message:
-          error instanceof Error && error.name === 'AbortError'
-            ? `${publisher} took too long to respond.`
-            : `Could not reach ${publisher} from your browser.`,
-      });
-    }
-  }, [items, publisher, sourceId]);
+    },
+    [items, publisher, sourceId],
+  );
+
+  const onRefresh = useCallback(() => run('manual'), [run]);
+
+  // Refresh once when the section is opened. This is what makes the section
+  // current on every visit rather than once per deployment.
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    /*
+     * Fetching on mount is exactly what an effect is for, and there is no way
+     * to reach a publisher's API without one. No state is set synchronously
+     * here — `run('auto')` only updates once the request resolves — but the
+     * rule cannot see through the callback, so it is silenced deliberately.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (shouldRefresh(sourceId)) void run('auto');
+  }, [run, sourceId]);
 
   const shown = state.phase === 'live' ? state.items : items;
   const shownAt = state.phase === 'live' ? state.at : builtAt;
@@ -105,7 +145,7 @@ export function LiveSection({
             : ''}
       </p>
 
-      {state.phase === 'live' ? (
+      {state.phase === 'live' && state.announce ? (
         <p className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
           <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           {state.added > 0
@@ -114,7 +154,7 @@ export function LiveSection({
         </p>
       ) : null}
 
-      {state.phase === 'failed' ? (
+      {state.phase === 'failed' && !state.quiet ? (
         <p className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           {state.message} Showing what was retrieved when this page was built.
