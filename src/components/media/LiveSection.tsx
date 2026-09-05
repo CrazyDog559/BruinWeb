@@ -5,7 +5,7 @@ import { AlertTriangle, Check, RefreshCw } from 'lucide-react';
 
 import { MediaCard } from '@/components/media/MediaCard';
 import { ageInMinutes, formatAgePhrase } from '@/lib/config/refresh';
-import { markRefreshed, refreshSource, shouldRefresh, type LiveSourceId } from '@/lib/live';
+import { markRefreshed, refreshSource, shouldAutoRefresh, type LiveSourceId } from '@/lib/live';
 import { formatDate, formatTime } from '@/lib/normalize';
 import type { MediaItem } from '@/lib/types';
 
@@ -97,14 +97,14 @@ export function LiveSection({
     if (started.current) return;
     started.current = true;
     /*
-     * Fetching on mount is exactly what an effect is for, and there is no way
-     * to reach a publisher's API without one. No state is set synchronously
-     * here — `run('auto')` only updates once the request resolves — but the
-     * rule cannot see through the callback, so it is silenced deliberately.
+     * Fetching on mount is exactly what an effect is for, and there is no way to
+     * reach a publisher's API without one. No state is set synchronously here —
+     * `run('auto')` only updates once the request resolves — but the rule cannot
+     * see through the callback, so it is silenced deliberately.
      */
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (shouldRefresh(sourceId)) void run('auto');
-  }, [run, sourceId]);
+    if (shouldAutoRefresh(sourceId, items.length)) void run('auto');
+  }, [items.length, run, sourceId]);
 
   const shown = state.phase === 'live' ? state.items : items;
   const shownAt = state.phase === 'live' ? state.at : builtAt;

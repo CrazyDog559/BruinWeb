@@ -166,6 +166,22 @@ export function shouldRefresh(id: LiveSourceId, now: number = Date.now()): boole
   }
 }
 
+/**
+ * Whether a section should refresh itself when it opens.
+ *
+ * The throttle is a courtesy to publishers, not a reason to leave a reader
+ * staring at nothing: a section the build could not fill always tries, however
+ * recently another page refreshed the same source. That is the normal state for
+ * Daily Bruin, whose publisher refuses the build outright but answers browsers.
+ */
+export function shouldAutoRefresh(
+  id: LiveSourceId,
+  builtItemCount: number,
+  now: number = Date.now(),
+): boolean {
+  return builtItemCount === 0 || shouldRefresh(id, now);
+}
+
 export function markRefreshed(id: LiveSourceId, now: number = Date.now()): void {
   try {
     sessionStorage.setItem(`${THROTTLE_PREFIX}${id}`, String(now));

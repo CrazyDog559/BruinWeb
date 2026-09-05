@@ -8,6 +8,7 @@ import {
   markRefreshed,
   refreshMany,
   refreshSource,
+  shouldAutoRefresh,
   shouldRefresh,
 } from '@/lib/live';
 
@@ -86,6 +87,28 @@ describe('throttle', () => {
     const data = mockStorage();
     data.set('bruinweb:live:daily-bruin', 'not-a-number');
     expect(shouldRefresh('daily-bruin')).toBe(true);
+  });
+});
+
+describe('shouldAutoRefresh', () => {
+  const now = Date.parse('2026-09-05T12:00:00.000Z');
+
+  it('never leaves an empty section empty, however recently it refreshed', () => {
+    markRefreshed('daily-bruin', now);
+    expect(shouldRefresh('daily-bruin', now + 1000)).toBe(false);
+    // This is the Daily Bruin's normal state: the build is refused, so the
+    // section has nothing until the browser fetches it.
+    expect(shouldAutoRefresh('daily-bruin', 0, now + 1000)).toBe(true);
+  });
+
+  it('respects the throttle when there is already content on screen', () => {
+    markRefreshed('daily-bruin', now);
+    expect(shouldAutoRefresh('daily-bruin', 24, now + 1000)).toBe(false);
+    expect(shouldAutoRefresh('daily-bruin', 24, now + LIVE_THROTTLE_MS + 1)).toBe(true);
+  });
+
+  it('refreshes a populated section on a first visit', () => {
+    expect(shouldAutoRefresh('daily-bruin', 24, now)).toBe(true);
   });
 });
 
